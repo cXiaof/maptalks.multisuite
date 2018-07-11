@@ -3927,7 +3927,9 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : _defaults(subClass, superClass); }
 
-var options = {};
+var options = {
+    needCollection: false
+};
 
 var CDSP = function (_maptalks$Class) {
     _inherits(CDSP, _maptalks$Class);
@@ -3937,9 +3939,48 @@ var CDSP = function (_maptalks$Class) {
 
         var _this = _possibleConstructorReturn(this, _maptalks$Class.call(this, options));
 
-        _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
+        _this._updateSameType(options.needCollection);
         return _this;
     }
+
+    CDSP.prototype.combine = function combine(geometry) {
+        if (geometry instanceof maptalks.Geometry) {
+            var type = geometry.type,
+                _layer = geometry._layer;
+
+            this.geometry = geometry;
+            this.layer = _layer;
+            var map = _layer.map;
+            _layer.hide();
+            this._addTo(map);
+        }
+        return this;
+    };
+
+    CDSP.prototype.needCollection = function needCollection(need) {
+        this._updateSameType(need);
+        return this;
+    };
+
+    CDSP.prototype.remove = function remove() {
+        if (this.layer) this.layer.show();
+        if (this._suiteLayer) this._suiteLayer.remove();
+        delete this._suiteLayer;
+        delete this._layerName;
+    };
+
+    CDSP.prototype._addTo = function _addTo(map) {
+        if (this._suiteLayer) this.remove();
+        var layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
+        this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
+        this._map = map;
+    };
+
+    CDSP.prototype._updateSameType = function _updateSameType(need) {
+        need = need !== undefined ? need : this.options['needCollection'];
+        need = need !== undefined ? need : options.needCollection;
+        this._sameType = need;
+    };
 
     return CDSP;
 }(maptalks.Class);
