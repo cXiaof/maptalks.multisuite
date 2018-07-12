@@ -3928,7 +3928,11 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : _defaults(subClass, superClass); }
 
 var options = {
-    needCollection: false
+    needCollection: false,
+    symbol: {
+        lineColor: 'red',
+        lineWidth: 4
+    }
 };
 
 var CDSP = function (_maptalks$Class) {
@@ -3939,7 +3943,8 @@ var CDSP = function (_maptalks$Class) {
 
         var _this = _possibleConstructorReturn(this, _maptalks$Class.call(this, options));
 
-        _this._updateSameType(options.needCollection);
+        _this._updateSameType();
+        _this._updateHitSymbol();
         return _this;
     }
 
@@ -3949,11 +3954,19 @@ var CDSP = function (_maptalks$Class) {
                 _layer = geometry._layer;
 
             this.geometry = geometry;
+            this.geometryType = type;
+            this.geometrySymbol = geometry.getSymbol();
             this.layer = _layer;
             var map = _layer.map;
-            _layer.hide();
             this._addTo(map);
+            this._updateGeometries();
+            this._registerMapEvents();
         }
+        return this;
+    };
+
+    CDSP.prototype.setSymbol = function setSymbol(symbol) {
+        this._updateHitSymbol(symbol);
         return this;
     };
 
@@ -3966,20 +3979,70 @@ var CDSP = function (_maptalks$Class) {
         if (this.layer) this.layer.show();
         if (this._suiteLayer) this._suiteLayer.remove();
         delete this._suiteLayer;
-        delete this._layerName;
     };
 
-    CDSP.prototype._addTo = function _addTo(map) {
-        if (this._suiteLayer) this.remove();
-        var layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
-        this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
-        this._map = map;
+    CDSP.prototype._updateHitSymbol = function _updateHitSymbol(symbol) {
+        this._hitSymbol = symbol || this.options['symbol'] || options.symbol;
     };
 
     CDSP.prototype._updateSameType = function _updateSameType(need) {
         need = need !== undefined ? need : this.options['needCollection'];
         need = need !== undefined ? need : options.needCollection;
         this._sameType = need;
+    };
+
+    CDSP.prototype._addTo = function _addTo(map) {
+        if (this._suiteLayer) this.remove();
+        var style = this.layer.getStyle();
+        this.layer.hide();
+        this.geometries = this.layer.getGeometries();
+        this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
+        this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
+        if (style) this._suiteLayer.setStyle(style);
+        this._map = map;
+        this._updateGeometries();
+    };
+
+    CDSP.prototype._updateGeometries = function _updateGeometries() {
+        var _this2 = this;
+
+        var geometries = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.geometries;
+
+        if (this._suiteLayer) {
+            this._suiteLayer.clear().hide();
+            var _geos = [];
+            geometries.forEach(function (geo) {
+                var symbol = geo.getSymbol();
+                var _geo = geo.copy();
+                _geo.setSymbol(symbol).addTo(_this2._suiteLayer);
+                _geos.push(_geo);
+            });
+            this._geosFrom = _geos;
+            this._suiteLayer.show();
+        }
+    };
+
+    CDSP.prototype._registerMapEvents = function _registerMapEvents() {
+        var _this3 = this;
+
+        if (!this._mousemove) {
+            var map = this._map;
+            this._mousemove = function (e) {
+                return _this3._mousemoveEvents(e);
+            };
+            map.on('mousemove', this._mousemove, this);
+        }
+    };
+
+    CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
+        var _this4 = this;
+
+        var geos = this._suiteLayer.identify(e.coordinate);
+        if (geos.length > 0) geos.forEach(function (geo, index) {
+            if (index === 0) geo.updateSymbol(_this4._hitSymbol);else geo.setSymbol(_this4.geometrySymbol);
+        });else this._geosFrom.forEach(function (geo) {
+            return geo.setSymbol(_this4.geometrySymbol);
+        });
     };
 
     return CDSP;

@@ -16,12 +16,48 @@ const drawTool = new maptalks.DrawTool({ mode: 'LineString' }).addTo(map).disabl
 drawTool.on('drawend', (param) => {
     const { geometry } = param
     geometry.addTo(layerSketch)
-    geometry.on('contextmenu', () => {})
+    const cdmp = new maptalks.CDSP()
+    const options = {
+        items: [
+            {
+                item: 'combine',
+                click: () => {
+                    cdmp.combine(geometry)
+                    console.log('combine')
+                }
+            },
+            '-',
+            {
+                item: 'decompose',
+                click: () => {
+                    cdmp.combine(geometry)
+                    console.log('decompose')
+                }
+            },
+            '-',
+            {
+                item: 'split',
+                click: () => {
+                    cdmp.combine(geometry)
+                    console.log('split')
+                }
+            },
+            '-',
+            {
+                item: 'peel',
+                click: () => {
+                    cdmp.combine(geometry)
+                    console.log('peel')
+                }
+            }
+        ]
+    }
+    geometry.on('contextmenu', () => geometry.setMenu(options).openMenu())
 })
 
-const modesDraw = ['LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
+const modes = ['LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
 let children = []
-modesDraw.map((item) => children.push({ item, click: () => drawTool.setMode(item).enable() }))
+modes.map((item) => children.push({ item, click: () => drawTool.setMode(item).enable() }))
 
 const toolbar = new maptalks.control.Toolbar({
     items: [
