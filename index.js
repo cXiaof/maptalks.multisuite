@@ -14,7 +14,9 @@ export class CDSP extends maptalks.Class {
         super(options)
         this._updateSameType()
         this._updateUpdateSymbol()
+        this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
         this._needRefreshSymbol = false
+        this._chooseGeos = []
         this._hitSymbol = {
             lineColor: 'red',
             lineWidth: 4
@@ -30,10 +32,22 @@ export class CDSP extends maptalks.Class {
             this.layer = _layer
             const map = _layer.map
             this._addTo(map)
-            this._setDblclickZoom()
-            this._updateGeometries()
-            this._registerMapEvents()
         }
+        return this
+    }
+
+    remove() {
+        const layer = map.getLayer(this._layerName)
+        if (layer) layer.remove()
+        this._offMapEvents()
+
+        delete this._mousemove
+        delete this._click
+        delete this._dblclick
+    }
+
+    needCollection(need) {
+        this._updateSameType(need)
         return this
     }
 
@@ -42,88 +56,35 @@ export class CDSP extends maptalks.Class {
         return this
     }
 
-    needCollection(need) {
-        this._updateSameType(need)
-        return this
-    }
-
-    remove() {
-        this._offMapEvents()
-        if (this.layer) {
-            const geos = this._suiteLayer.getGeometries()
-            this.layer.clear()
-            geos.forEach((geo) =>
-                geo
-                    .copy()
-                    .setSymbol(this.geometrySymbol)
-                    .addTo(this.layer)
-            )
-            this.layer.show()
-        }
-        if (this._suiteLayer) this._suiteLayer.remove()
-        if (this._doubleClickZoom !== undefined) {
-            map.config({ doubleClickZoom: this._doubleClickZoom })
-            delete this._doubleClickZoom
-        }
-        delete this._geosFrom
-        delete this._chooseGeos
-        delete this._suiteLayer
-    }
-
-    _updateUpdateSymbol(symbol) {
-        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
-    }
-
     _updateSameType(need) {
         need = need !== undefined ? need : this.options['needCollection']
         need = need !== undefined ? need : options.needCollection
         this._sameType = need
     }
 
-    _setDblclickZoom() {
-        const map = this._map
-        if (map._map_tool instanceof maptalks.DrawTool) map._map_tool.disable()
-        this._doubleClickZoom = map.options.doubleClickZoom
-        map.config({ doubleClickZoom: false })
+    _updateUpdateSymbol(symbol) {
+        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
     }
 
     _addTo(map) {
-        if (this._suiteLayer) this.remove()
-        const style = this.layer.getStyle()
-        this.layer.hide()
-        this.geometries = this.layer.getGeometries()
-        this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
-        this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
-        if (style) this._suiteLayer.setStyle(style)
+        const layer = map.getLayer(this._layerName)
+        if (layer) this.remove()
         this._map = map
-        this._chooseGeos = []
-        this._updateGeometries()
-    }
-
-    _updateGeometries(geometries = this.geometries) {
-        if (this._suiteLayer) {
-            this._suiteLayer.clear().hide()
-            let _geos = []
-            geometries.forEach((geo) => {
-                const symbol = geo.getSymbol()
-                const _geo = geo.copy()
-                _geo.setSymbol(symbol).addTo(this._suiteLayer)
-                _geos.push(_geo)
-            })
-            this._geosFrom = _geos
-            this._suiteLayer.show()
-        }
+        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
+        this._chooseLayer.bringToFront()
+        this._registerMapEvents()
+        return this
     }
 
     _registerMapEvents() {
         if (!this._mousemove) {
             const map = this._map
             this._mousemove = (e) => this._mousemoveEvents(e)
-            map.on('mousemove', this._mousemove, this)
             this._click = () => this._clickEvents()
+            // this._dblclick = () => this._dblclickEvents()
+            map.on('mousemove', this._mousemove, this)
             map.on('click', this._click, this)
-            this._dblclick = () => this._dblclickEvents()
-            map.on('dblclick', this._dblclick, this)
+            // map.on('dblclick', this._dblclick, this)
         }
     }
 
@@ -131,45 +92,59 @@ export class CDSP extends maptalks.Class {
         const map = this._map
         map.off('mousemove', this._mousemove, this)
         map.off('click', this._click, this)
-        map.off('dblclick', this._dblclick, this)
+        // map.off('dblclick', this._dblclick, this)
     }
 
     _mousemoveEvents(e) {
-        const geos = this._suiteLayer.identify(e.coordinate)
-        if (this._needRefreshSymbol) this._updateChooseSymbol()
+        const geos = this.layer.identify(e.coordinate)
+        const _layer = this._chooseLayer
+        const id = '_hit'
+        if (this._needRefreshSymbol) {
+            const hitGeoCopy = _layer.getGeometryById(id)
+            if (hitGeoCopy) {
+                hitGeoCopy.remove()
+                delete this.hitGeo
+            }
+            this._needRefreshSymbol = false
+        }
         if (geos.length > 0) {
             this._needRefreshSymbol = true
-            const geo = geos[0]
-            this._hitGeo = geo
-            geo.updateSymbol(this._hitSymbol)
+            this.hitGeo = geos[0]
+            this.hitGeo
+                .copy()
+                .setId(id)
+                .updateSymbol(this._hitSymbol)
+                .addTo(_layer)
         }
     }
 
-    _clickEvents(e) {
-        const map = this._map
+    _clickEvents() {
         const drawing = map._map_tool && map._map_tool.isEnabled()
-        if (!drawing && this._hitGeo) {
-            const hitCoord = this._hitGeo.getCoordinates()
+        if (!drawing && this.hitGeo) {
+            const coordHit = this.hitGeo.getCoordinates()
             let hitGeosArr = []
             this._chooseGeos.forEach((geo) => {
                 const coord = geo.getCoordinates()
-                if (!isEqual(hitCoord, coord)) hitGeosArr.push(geo)
+                if (!isEqual(coordHit, coord)) hitGeosArr.push(geo)
             })
-            if (hitGeosArr.length === this._chooseGeos.length) this._chooseGeos.push(this._hitGeo)
-            else this._chooseGeos = hitGeosArr
+            if (hitGeosArr.length === this._chooseGeos.length) {
+                this.hitGeo.hide()
+                this._chooseGeos.push(this.hitGeo)
+            } else this._chooseGeos = hitGeosArr
+            this._updateChooseGeos()
         }
     }
 
-    _updateChooseSymbol() {
-        this._suiteLayer.hide()
-        this._geosFrom.forEach((geo) => geo.setSymbol(this.geometrySymbol))
-        this._chooseGeos.forEach((geo) => geo.setSymbol(this._chooseSymbol))
-        this._needRefreshSymbol = false
-        this._suiteLayer.show()
-    }
-
-    _dblclickEvents() {
-        this.remove()
+    _updateChooseGeos() {
+        const layer = this._chooseLayer
+        layer.hide().clear()
+        this._chooseGeos.forEach((geo) =>
+            geo
+                .copy()
+                .setSymbol(this._chooseSymbol)
+                .addTo(layer)
+        )
+        layer.show()
     }
 }
 

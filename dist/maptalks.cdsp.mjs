@@ -6115,7 +6115,9 @@ var CDSP = function (_maptalks$Class) {
 
         _this._updateSameType();
         _this._updateUpdateSymbol();
+        _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
         _this._needRefreshSymbol = false;
+        _this._chooseGeos = [];
         _this._hitSymbol = {
             lineColor: 'red',
             lineWidth: 4
@@ -6134,10 +6136,22 @@ var CDSP = function (_maptalks$Class) {
             this.layer = _layer;
             var _map = _layer.map;
             this._addTo(_map);
-            this._setDblclickZoom();
-            this._updateGeometries();
-            this._registerMapEvents();
         }
+        return this;
+    };
+
+    CDSP.prototype.remove = function remove() {
+        var layer = map.getLayer(this._layerName);
+        if (layer) layer.remove();
+        this._offMapEvents();
+
+        delete this._mousemove;
+        delete this._click;
+        delete this._dblclick;
+    };
+
+    CDSP.prototype.needCollection = function needCollection(need) {
+        this._updateSameType(need);
         return this;
     };
 
@@ -6146,99 +6160,41 @@ var CDSP = function (_maptalks$Class) {
         return this;
     };
 
-    CDSP.prototype.needCollection = function needCollection(need) {
-        this._updateSameType(need);
-        return this;
-    };
-
-    CDSP.prototype.remove = function remove() {
-        var _this2 = this;
-
-        this._offMapEvents();
-        if (this.layer) {
-            var geos = this._suiteLayer.getGeometries();
-            this.layer.clear();
-            geos.forEach(function (geo) {
-                return geo.copy().setSymbol(_this2.geometrySymbol).addTo(_this2.layer);
-            });
-            this.layer.show();
-        }
-        if (this._suiteLayer) this._suiteLayer.remove();
-        if (this._doubleClickZoom !== undefined) {
-            map.config({ doubleClickZoom: this._doubleClickZoom });
-            delete this._doubleClickZoom;
-        }
-        delete this._geosFrom;
-        delete this._chooseGeos;
-        delete this._suiteLayer;
-    };
-
-    CDSP.prototype._updateUpdateSymbol = function _updateUpdateSymbol(symbol) {
-        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol;
-    };
-
     CDSP.prototype._updateSameType = function _updateSameType(need) {
         need = need !== undefined ? need : this.options['needCollection'];
         need = need !== undefined ? need : options.needCollection;
         this._sameType = need;
     };
 
-    CDSP.prototype._setDblclickZoom = function _setDblclickZoom() {
-        var map = this._map;
-        if (map._map_tool instanceof maptalks.DrawTool) map._map_tool.disable();
-        this._doubleClickZoom = map.options.doubleClickZoom;
-        map.config({ doubleClickZoom: false });
+    CDSP.prototype._updateUpdateSymbol = function _updateUpdateSymbol(symbol) {
+        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol;
     };
 
     CDSP.prototype._addTo = function _addTo(map) {
-        if (this._suiteLayer) this.remove();
-        var style = this.layer.getStyle();
-        this.layer.hide();
-        this.geometries = this.layer.getGeometries();
-        this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
-        this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
-        if (style) this._suiteLayer.setStyle(style);
+        var layer = map.getLayer(this._layerName);
+        if (layer) this.remove();
         this._map = map;
-        this._chooseGeos = [];
-        this._updateGeometries();
-    };
-
-    CDSP.prototype._updateGeometries = function _updateGeometries() {
-        var _this3 = this;
-
-        var geometries = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.geometries;
-
-        if (this._suiteLayer) {
-            this._suiteLayer.clear().hide();
-            var _geos = [];
-            geometries.forEach(function (geo) {
-                var symbol = geo.getSymbol();
-                var _geo = geo.copy();
-                _geo.setSymbol(symbol).addTo(_this3._suiteLayer);
-                _geos.push(_geo);
-            });
-            this._geosFrom = _geos;
-            this._suiteLayer.show();
-        }
+        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
+        this._chooseLayer.bringToFront();
+        this._registerMapEvents();
+        return this;
     };
 
     CDSP.prototype._registerMapEvents = function _registerMapEvents() {
-        var _this4 = this;
+        var _this2 = this;
 
         if (!this._mousemove) {
             var _map2 = this._map;
             this._mousemove = function (e) {
-                return _this4._mousemoveEvents(e);
+                return _this2._mousemoveEvents(e);
             };
-            _map2.on('mousemove', this._mousemove, this);
             this._click = function () {
-                return _this4._clickEvents();
+                return _this2._clickEvents();
             };
+            // this._dblclick = () => this._dblclickEvents()
+            _map2.on('mousemove', this._mousemove, this);
             _map2.on('click', this._click, this);
-            this._dblclick = function () {
-                return _this4._dblclickEvents();
-            };
-            _map2.on('dblclick', this._dblclick, this);
+            // map.on('dblclick', this._dblclick, this)
         }
     };
 
@@ -6246,50 +6202,54 @@ var CDSP = function (_maptalks$Class) {
         var map = this._map;
         map.off('mousemove', this._mousemove, this);
         map.off('click', this._click, this);
-        map.off('dblclick', this._dblclick, this);
+        // map.off('dblclick', this._dblclick, this)
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var geos = this._suiteLayer.identify(e.coordinate);
-        if (this._needRefreshSymbol) this._updateChooseSymbol();
+        var geos = this.layer.identify(e.coordinate);
+        var _layer = this._chooseLayer;
+        var id = '_hit';
+        if (this._needRefreshSymbol) {
+            var hitGeoCopy = _layer.getGeometryById(id);
+            if (hitGeoCopy) {
+                hitGeoCopy.remove();
+                delete this.hitGeo;
+            }
+            this._needRefreshSymbol = false;
+        }
         if (geos.length > 0) {
             this._needRefreshSymbol = true;
-            var geo = geos[0];
-            this._hitGeo = geo;
-            geo.updateSymbol(this._hitSymbol);
+            this.hitGeo = geos[0];
+            this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);
         }
     };
 
-    CDSP.prototype._clickEvents = function _clickEvents(e) {
-        var map = this._map;
+    CDSP.prototype._clickEvents = function _clickEvents() {
         var drawing = map._map_tool && map._map_tool.isEnabled();
-        if (!drawing && this._hitGeo) {
-            var hitCoord = this._hitGeo.getCoordinates();
+        if (!drawing && this.hitGeo) {
+            var coordHit = this.hitGeo.getCoordinates();
             var hitGeosArr = [];
             this._chooseGeos.forEach(function (geo) {
                 var coord = geo.getCoordinates();
-                if (!isEqual_1(hitCoord, coord)) hitGeosArr.push(geo);
+                if (!isEqual_1(coordHit, coord)) hitGeosArr.push(geo);
             });
-            if (hitGeosArr.length === this._chooseGeos.length) this._chooseGeos.push(this._hitGeo);else this._chooseGeos = hitGeosArr;
+            if (hitGeosArr.length === this._chooseGeos.length) {
+                this.hitGeo.hide();
+                this._chooseGeos.push(this.hitGeo);
+            } else this._chooseGeos = hitGeosArr;
+            this._updateChooseGeos();
         }
     };
 
-    CDSP.prototype._updateChooseSymbol = function _updateChooseSymbol() {
-        var _this5 = this;
+    CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
+        var _this3 = this;
 
-        this._suiteLayer.hide();
-        this._geosFrom.forEach(function (geo) {
-            return geo.setSymbol(_this5.geometrySymbol);
-        });
+        var layer = this._chooseLayer;
+        layer.hide().clear();
         this._chooseGeos.forEach(function (geo) {
-            return geo.setSymbol(_this5._chooseSymbol);
+            return geo.copy().setSymbol(_this3._chooseSymbol).addTo(layer);
         });
-        this._needRefreshSymbol = false;
-        this._suiteLayer.show();
-    };
-
-    CDSP.prototype._dblclickEvents = function _dblclickEvents() {
-        this.remove();
+        layer.show();
     };
 
     return CDSP;

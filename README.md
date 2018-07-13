@@ -27,7 +27,7 @@ As a plugin, `maptalks.cdsp` must be loaded after `maptalks.js` in browsers. You
 ## API Reference
 
 ```javascript
-new maptalks.cdsp(options)
+new maptalks.CDSP(options)
 ```
 
 -   options **Object** options
