@@ -1,9 +1,10 @@
 import { Point2D, Intersection } from 'kld-intersections'
+import isEqual from 'lodash/isEqual'
 
 const options = {
     needCollection: false,
     symbol: {
-        lineColor: 'red',
+        lineColor: '#00bcd4',
         lineWidth: 4
     }
 }
@@ -12,7 +13,12 @@ export class CDSP extends maptalks.Class {
     constructor(options) {
         super(options)
         this._updateSameType()
-        this._updateHitSymbol()
+        this._updateUpdateSymbol()
+        this._needRefreshSymbol = false
+        this._hitSymbol = {
+            lineColor: 'red',
+            lineWidth: 4
+        }
     }
 
     combine(geometry) {
@@ -24,6 +30,7 @@ export class CDSP extends maptalks.Class {
             this.layer = _layer
             const map = _layer.map
             this._addTo(map)
+            this._setDblclickZoom()
             this._updateGeometries()
             this._registerMapEvents()
         }
@@ -31,7 +38,7 @@ export class CDSP extends maptalks.Class {
     }
 
     setSymbol(symbol) {
-        this._updateHitSymbol(symbol)
+        this._updateUpdateSymbol(symbol)
         return this
     }
 
@@ -41,19 +48,43 @@ export class CDSP extends maptalks.Class {
     }
 
     remove() {
-        if (this.layer) this.layer.show()
+        this._offMapEvents()
+        if (this.layer) {
+            const geos = this._suiteLayer.getGeometries()
+            this.layer.clear()
+            geos.forEach((geo) =>
+                geo
+                    .copy()
+                    .setSymbol(this.geometrySymbol)
+                    .addTo(this.layer)
+            )
+            this.layer.show()
+        }
         if (this._suiteLayer) this._suiteLayer.remove()
+        if (this._doubleClickZoom !== undefined) {
+            map.config({ doubleClickZoom: this._doubleClickZoom })
+            delete this._doubleClickZoom
+        }
+        delete this._geosFrom
+        delete this._chooseGeos
         delete this._suiteLayer
     }
 
-    _updateHitSymbol(symbol) {
-        this._hitSymbol = symbol || this.options['symbol'] || options.symbol
+    _updateUpdateSymbol(symbol) {
+        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
     }
 
     _updateSameType(need) {
         need = need !== undefined ? need : this.options['needCollection']
         need = need !== undefined ? need : options.needCollection
         this._sameType = need
+    }
+
+    _setDblclickZoom() {
+        const map = this._map
+        if (map._map_tool instanceof maptalks.DrawTool) map._map_tool.disable()
+        this._doubleClickZoom = map.options.doubleClickZoom
+        map.config({ doubleClickZoom: false })
     }
 
     _addTo(map) {
@@ -65,6 +96,7 @@ export class CDSP extends maptalks.Class {
         this._suiteLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
         if (style) this._suiteLayer.setStyle(style)
         this._map = map
+        this._chooseGeos = []
         this._updateGeometries()
     }
 
@@ -88,17 +120,56 @@ export class CDSP extends maptalks.Class {
             const map = this._map
             this._mousemove = (e) => this._mousemoveEvents(e)
             map.on('mousemove', this._mousemove, this)
+            this._click = () => this._clickEvents()
+            map.on('click', this._click, this)
+            this._dblclick = () => this._dblclickEvents()
+            map.on('dblclick', this._dblclick, this)
         }
+    }
+
+    _offMapEvents() {
+        const map = this._map
+        map.off('mousemove', this._mousemove, this)
+        map.off('click', this._click, this)
+        map.off('dblclick', this._dblclick, this)
     }
 
     _mousemoveEvents(e) {
         const geos = this._suiteLayer.identify(e.coordinate)
-        if (geos.length > 0)
-            geos.forEach((geo, index) => {
-                if (index === 0) geo.updateSymbol(this._hitSymbol)
-                else geo.setSymbol(this.geometrySymbol)
+        if (this._needRefreshSymbol) this._updateChooseSymbol()
+        if (geos.length > 0) {
+            this._needRefreshSymbol = true
+            const geo = geos[0]
+            this._hitGeo = geo
+            geo.updateSymbol(this._hitSymbol)
+        }
+    }
+
+    _clickEvents(e) {
+        const map = this._map
+        const drawing = map._map_tool && map._map_tool.isEnabled()
+        if (!drawing && this._hitGeo) {
+            const hitCoord = this._hitGeo.getCoordinates()
+            let hitGeosArr = []
+            this._chooseGeos.forEach((geo) => {
+                const coord = geo.getCoordinates()
+                if (!isEqual(hitCoord, coord)) hitGeosArr.push(geo)
             })
-        else this._geosFrom.forEach((geo) => geo.setSymbol(this.geometrySymbol))
+            if (hitGeosArr.length === this._chooseGeos.length) this._chooseGeos.push(this._hitGeo)
+            else this._chooseGeos = hitGeosArr
+        }
+    }
+
+    _updateChooseSymbol() {
+        this._suiteLayer.hide()
+        this._geosFrom.forEach((geo) => geo.setSymbol(this.geometrySymbol))
+        this._chooseGeos.forEach((geo) => geo.setSymbol(this._chooseSymbol))
+        this._needRefreshSymbol = false
+        this._suiteLayer.show()
+    }
+
+    _dblclickEvents() {
+        this.remove()
     }
 }
 
