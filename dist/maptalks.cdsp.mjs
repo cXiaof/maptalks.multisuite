@@ -6127,6 +6127,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.combine = function combine(geometry) {
         if (geometry instanceof maptalks.Geometry) {
+            if (this.geometry) this.remove();
             var type = geometry.type,
                 _layer = geometry._layer;
 
@@ -6136,6 +6137,8 @@ var CDSP = function (_maptalks$Class) {
             this.layer = _layer;
             var _map = _layer.map;
             this._addTo(_map);
+            this._chooseGeos = [geometry];
+            this._updateChooseGeos();
         }
         return this;
     };
@@ -6143,8 +6146,10 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype.remove = function remove() {
         var layer = map.getLayer(this._layerName);
         if (layer) layer.remove();
+        this._map.config({ doubleClickZoom: this.doubleClickZoom });
         this._offMapEvents();
 
+        delete this.doubleClickZoom;
         delete this._mousemove;
         delete this._click;
         delete this._dblclick;
@@ -6174,6 +6179,8 @@ var CDSP = function (_maptalks$Class) {
         var layer = map.getLayer(this._layerName);
         if (layer) this.remove();
         this._map = map;
+        this.doubleClickZoom = !!map.options.doubleClickZoom;
+        this._map.config({ doubleClickZoom: false });
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
         this._chooseLayer.bringToFront();
         this._registerMapEvents();
@@ -6228,15 +6235,14 @@ var CDSP = function (_maptalks$Class) {
         var drawing = map._map_tool && map._map_tool.isEnabled();
         if (!drawing && this.hitGeo) {
             var coordHit = this.hitGeo.getCoordinates();
-            var hitGeosArr = [];
+            var coordThis = this.geometry.getCoordinates();
+            if (isEqual_1(coordHit, coordThis)) return null;
+            var chooseNext = [];
             this._chooseGeos.forEach(function (geo) {
                 var coord = geo.getCoordinates();
-                if (!isEqual_1(coordHit, coord)) hitGeosArr.push(geo);
+                if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
             });
-            if (hitGeosArr.length === this._chooseGeos.length) {
-                this.hitGeo.hide();
-                this._chooseGeos.push(this.hitGeo);
-            } else this._chooseGeos = hitGeosArr;
+            if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
             this._updateChooseGeos();
         }
     };

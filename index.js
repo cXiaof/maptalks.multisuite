@@ -25,6 +25,7 @@ export class CDSP extends maptalks.Class {
 
     combine(geometry) {
         if (geometry instanceof maptalks.Geometry) {
+            if (this.geometry) this.remove()
             const { type, _layer } = geometry
             this.geometry = geometry
             this.geometryType = type
@@ -32,6 +33,8 @@ export class CDSP extends maptalks.Class {
             this.layer = _layer
             const map = _layer.map
             this._addTo(map)
+            this._chooseGeos = [geometry]
+            this._updateChooseGeos()
         }
         return this
     }
@@ -39,8 +42,10 @@ export class CDSP extends maptalks.Class {
     remove() {
         const layer = map.getLayer(this._layerName)
         if (layer) layer.remove()
+        this._map.config({ doubleClickZoom: this.doubleClickZoom })
         this._offMapEvents()
 
+        delete this.doubleClickZoom
         delete this._mousemove
         delete this._click
         delete this._dblclick
@@ -70,6 +75,8 @@ export class CDSP extends maptalks.Class {
         const layer = map.getLayer(this._layerName)
         if (layer) this.remove()
         this._map = map
+        this.doubleClickZoom = !!map.options.doubleClickZoom
+        this._map.config({ doubleClickZoom: false })
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
         this._chooseLayer.bringToFront()
         this._registerMapEvents()
@@ -122,15 +129,15 @@ export class CDSP extends maptalks.Class {
         const drawing = map._map_tool && map._map_tool.isEnabled()
         if (!drawing && this.hitGeo) {
             const coordHit = this.hitGeo.getCoordinates()
-            let hitGeosArr = []
+            const coordThis = this.geometry.getCoordinates()
+            if (isEqual(coordHit, coordThis)) return null
+            let chooseNext = []
             this._chooseGeos.forEach((geo) => {
                 const coord = geo.getCoordinates()
-                if (!isEqual(coordHit, coord)) hitGeosArr.push(geo)
+                if (!isEqual(coordHit, coord)) chooseNext.push(geo)
             })
-            if (hitGeosArr.length === this._chooseGeos.length) {
-                this.hitGeo.hide()
-                this._chooseGeos.push(this.hitGeo)
-            } else this._chooseGeos = hitGeosArr
+            if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo)
+            else this._chooseGeos = chooseNext
             this._updateChooseGeos()
         }
     }
