@@ -15,7 +15,6 @@ export class CDSP extends maptalks.Class {
         this._updateSameType()
         this._updateUpdateSymbol()
         this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
-        this._needRefreshSymbol = false
         this._chooseGeos = []
         this._hitSymbol = {
             lineColor: 'red',
@@ -24,14 +23,16 @@ export class CDSP extends maptalks.Class {
     }
 
     combine(geometry) {
+        this._mask = 'combine'
         if (geometry instanceof maptalks.Geometry) {
             if (this.geometry) this.remove()
-            const { type, _layer } = geometry
+            this._task = 'combine'
             this.geometry = geometry
-            this.geometryType = type
-            this.geometrySymbol = geometry.getSymbol()
-            this.layer = _layer
-            const map = _layer.map
+            let layer
+            if (geometry instanceof maptalks.MultiPolygon) layer = geometry._geometries[0]._layer
+            else layer = geometry._layer
+            this.layer = layer
+            const map = layer.map
             this._addTo(map)
             this._chooseGeos = [geometry]
             this._updateChooseGeos()
@@ -39,13 +40,41 @@ export class CDSP extends maptalks.Class {
         return this
     }
 
+    submit(callback = () => false) {
+        switch (this._mask) {
+            case 'combine':
+                this._chooseGeos.forEach((geo) => geo.remove())
+                let geos = []
+                this._chooseLayer.getGeometries().forEach((geo) => {
+                    if (geo.getId() !== '_hit') geos.push(geo.copy())
+                })
+                const symbol = this.geometry.getSymbol()
+                const properties = this.geometry.getProperties()
+                const combine = new maptalks.MultiPolygon(geos, { symbol, properties })
+                callback(combine)
+                break
+            default:
+                break
+        }
+        this.remove()
+    }
+
+    cancel() {
+        this.remove()
+    }
+
     remove() {
+        const map = this._map
         const layer = map.getLayer(this._layerName)
         if (layer) layer.remove()
-        this._map.config({ doubleClickZoom: this.doubleClickZoom })
+        map.config({ doubleClickZoom: this.doubleClickZoom })
         this._offMapEvents()
-
+        this._chooseLayer.remove()
+        delete this._task
+        delete this._chooseLayer
+        delete this.geometry
         delete this.doubleClickZoom
+        delete this._chooseGeos
         delete this._mousemove
         delete this._click
         delete this._dblclick
@@ -74,9 +103,9 @@ export class CDSP extends maptalks.Class {
     _addTo(map) {
         const layer = map.getLayer(this._layerName)
         if (layer) this.remove()
-        this._map = map
         this.doubleClickZoom = !!map.options.doubleClickZoom
-        this._map.config({ doubleClickZoom: false })
+        map.config({ doubleClickZoom: false })
+        this._map = map
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
         this._chooseLayer.bringToFront()
         this._registerMapEvents()
@@ -88,10 +117,8 @@ export class CDSP extends maptalks.Class {
             const map = this._map
             this._mousemove = (e) => this._mousemoveEvents(e)
             this._click = () => this._clickEvents()
-            // this._dblclick = () => this._dblclickEvents()
             map.on('mousemove', this._mousemove, this)
             map.on('click', this._click, this)
-            // map.on('dblclick', this._dblclick, this)
         }
     }
 
@@ -99,7 +126,6 @@ export class CDSP extends maptalks.Class {
         const map = this._map
         map.off('mousemove', this._mousemove, this)
         map.off('click', this._click, this)
-        // map.off('dblclick', this._dblclick, this)
     }
 
     _mousemoveEvents(e) {
@@ -144,14 +170,17 @@ export class CDSP extends maptalks.Class {
 
     _updateChooseGeos() {
         const layer = this._chooseLayer
-        layer.hide().clear()
-        this._chooseGeos.forEach((geo) =>
-            geo
-                .copy()
-                .setSymbol(this._chooseSymbol)
-                .addTo(layer)
-        )
-        layer.show()
+        layer.clear()
+        this._chooseGeos.forEach((geo) => {
+            if (geo.type === 'MultiPolygon') {
+                let geos = []
+                geo._geometries.forEach((item) => geos.push(item.copy()))
+                new maptalks.MultiPolygon(geos, { symbol: this._chooseSymbol }).addTo(layer)
+            } else
+                geo.copy()
+                    .updateSymbol(this._chooseSymbol)
+                    .addTo(layer)
+        })
     }
 }
 

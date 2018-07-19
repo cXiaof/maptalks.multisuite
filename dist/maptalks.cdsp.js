@@ -6122,7 +6122,6 @@ var CDSP = function (_maptalks$Class) {
         _this._updateSameType();
         _this._updateUpdateSymbol();
         _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
-        _this._needRefreshSymbol = false;
         _this._chooseGeos = [];
         _this._hitSymbol = {
             lineColor: 'red',
@@ -6132,16 +6131,15 @@ var CDSP = function (_maptalks$Class) {
     }
 
     CDSP.prototype.combine = function combine(geometry) {
+        this._mask = 'combine';
         if (geometry instanceof maptalks.Geometry) {
             if (this.geometry) this.remove();
-            var type = geometry.type,
-                _layer = geometry._layer;
-
+            this._task = 'combine';
             this.geometry = geometry;
-            this.geometryType = type;
-            this.geometrySymbol = geometry.getSymbol();
-            this.layer = _layer;
-            var _map = _layer.map;
+            var layer = void 0;
+            if (geometry instanceof maptalks.MultiPolygon) layer = geometry._geometries[0]._layer;else layer = geometry._layer;
+            this.layer = layer;
+            var _map = layer.map;
             this._addTo(_map);
             this._chooseGeos = [geometry];
             this._updateChooseGeos();
@@ -6149,13 +6147,47 @@ var CDSP = function (_maptalks$Class) {
         return this;
     };
 
+    CDSP.prototype.submit = function submit() {
+        var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {
+            return false;
+        };
+
+        switch (this._mask) {
+            case 'combine':
+                this._chooseGeos.forEach(function (geo) {
+                    return geo.remove();
+                });
+                var geos = [];
+                this._chooseLayer.getGeometries().forEach(function (geo) {
+                    if (geo.getId() !== '_hit') geos.push(geo.copy());
+                });
+                var symbol = this.geometry.getSymbol();
+                var properties = this.geometry.getProperties();
+                var combine = new maptalks.MultiPolygon(geos, { symbol: symbol, properties: properties });
+                callback(combine);
+                break;
+            default:
+                break;
+        }
+        this.remove();
+    };
+
+    CDSP.prototype.cancel = function cancel() {
+        this.remove();
+    };
+
     CDSP.prototype.remove = function remove() {
+        var map = this._map;
         var layer = map.getLayer(this._layerName);
         if (layer) layer.remove();
-        this._map.config({ doubleClickZoom: this.doubleClickZoom });
+        map.config({ doubleClickZoom: this.doubleClickZoom });
         this._offMapEvents();
-
+        this._chooseLayer.remove();
+        delete this._task;
+        delete this._chooseLayer;
+        delete this.geometry;
         delete this.doubleClickZoom;
+        delete this._chooseGeos;
         delete this._mousemove;
         delete this._click;
         delete this._dblclick;
@@ -6184,9 +6216,9 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._addTo = function _addTo(map) {
         var layer = map.getLayer(this._layerName);
         if (layer) this.remove();
-        this._map = map;
         this.doubleClickZoom = !!map.options.doubleClickZoom;
-        this._map.config({ doubleClickZoom: false });
+        map.config({ doubleClickZoom: false });
+        this._map = map;
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
         this._chooseLayer.bringToFront();
         this._registerMapEvents();
@@ -6204,10 +6236,8 @@ var CDSP = function (_maptalks$Class) {
             this._click = function () {
                 return _this2._clickEvents();
             };
-            // this._dblclick = () => this._dblclickEvents()
             _map2.on('mousemove', this._mousemove, this);
             _map2.on('click', this._click, this);
-            // map.on('dblclick', this._dblclick, this)
         }
     };
 
@@ -6215,7 +6245,6 @@ var CDSP = function (_maptalks$Class) {
         var map = this._map;
         map.off('mousemove', this._mousemove, this);
         map.off('click', this._click, this);
-        // map.off('dblclick', this._dblclick, this)
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
@@ -6257,11 +6286,16 @@ var CDSP = function (_maptalks$Class) {
         var _this3 = this;
 
         var layer = this._chooseLayer;
-        layer.hide().clear();
+        layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            return geo.copy().setSymbol(_this3._chooseSymbol).addTo(layer);
+            if (geo.type === 'MultiPolygon') {
+                var geos = [];
+                geo._geometries.forEach(function (item) {
+                    return geos.push(item.copy());
+                });
+                new maptalks.MultiPolygon(geos, { symbol: _this3._chooseSymbol }).addTo(layer);
+            } else geo.copy().updateSymbol(_this3._chooseSymbol).addTo(layer);
         });
-        layer.show();
     };
 
     return CDSP;

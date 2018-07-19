@@ -12,47 +12,13 @@ const map = new maptalks.Map('map', {
 
 const layerSketch = new maptalks.VectorLayer('sketchPad').addTo(map)
 
+const cdmp = new maptalks.CDSP()
+
 const drawTool = new maptalks.DrawTool({ mode: 'LineString' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
     const { geometry } = param
     geometry.addTo(layerSketch)
-    const cdmp = new maptalks.CDSP()
-    const options = {
-        items: [
-            {
-                item: 'combine',
-                click: () => {
-                    cdmp.combine(geometry)
-                    console.log('combine')
-                }
-            },
-            '-',
-            {
-                item: 'decompose',
-                click: () => {
-                    cdmp.combine(geometry)
-                    console.log('decompose')
-                }
-            },
-            '-',
-            {
-                item: 'split',
-                click: () => {
-                    cdmp.combine(geometry)
-                    console.log('split')
-                }
-            },
-            '-',
-            {
-                item: 'peel',
-                click: () => {
-                    cdmp.combine(geometry)
-                    console.log('peel')
-                }
-            }
-        ]
-    }
-    geometry.on('contextmenu', () => geometry.setMenu(options).openMenu())
+    geometry.on('contextmenu', () => geometry.setMenu(getOptions(geometry)).openMenu())
 })
 
 const modes = ['LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
@@ -75,3 +41,35 @@ const toolbar = new maptalks.control.Toolbar({
         }
     ]
 }).addTo(map)
+
+const getOptions = (geometry) => {
+    return {
+        items: [
+            {
+                item: 'combine',
+                click: () => {
+                    cdmp.combine(geometry)
+                    console.log('combine')
+                }
+            },
+            '-',
+            {
+                item: 'submit',
+                click: () => {
+                    cdmp.submit((geo) => {
+                        geo.addTo(layerSketch)
+                        geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
+                    })
+                }
+            },
+            '-',
+            {
+                item: 'cancel',
+                click: () => {
+                    cdmp.cancel()
+                    console.log('cancel')
+                }
+            }
+        ]
+    }
+}
