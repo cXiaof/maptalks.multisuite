@@ -57,7 +57,6 @@ const getOptions = (geometry) => {
                 item: 'submit',
                 click: () => {
                     cdmp.submit((geo) => {
-                        console.log(geo)
                         geo.addTo(layerSketch)
                         geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
                     })

@@ -123,27 +123,26 @@ export class CDSP extends maptalks.Class {
     }
 
     _mousemoveEvents(e) {
-        const geos = this.layer.identify(e.coordinate)
-        const _layer = this._chooseLayer
-        const id = '_hit'
-        if (this._needRefreshSymbol) {
-            const hitGeoCopy = _layer.getGeometryById(id)
-            if (hitGeoCopy) {
-                hitGeoCopy.remove()
-                delete this.hitGeo
+        const drawing = map._map_tool && map._map_tool.isEnabled()
+        if (!drawing) {
+            const geos = this.layer.identify(e.coordinate)
+            const _layer = this._chooseLayer
+            const id = '_hit'
+            if (this._needRefreshSymbol) {
+                const hitGeoCopy = _layer.getGeometryById(id)
+                if (hitGeoCopy) {
+                    hitGeoCopy.remove()
+                    delete this.hitGeo
+                }
+                this._needRefreshSymbol = false
             }
-            this._needRefreshSymbol = false
-        }
-        if (geos.length > 0) {
-            this._needRefreshSymbol = true
-            this.hitGeo = geos[0]
-            if (this._checkIsSameType(this.hitGeo))
-                this.hitGeo
-                    .copy()
-                    .setId(id)
-                    .updateSymbol(this._hitSymbol)
-                    .addTo(_layer)
-            else this.hitGeo = undefined
+            if (geos.length > 0 && !this._needRefreshSymbol) {
+                this._needRefreshSymbol = true
+                this.hitGeo = geos[0]
+                if (this._checkIsSameType(this.hitGeo))
+                    this._copyGeoUpdateSymbol(this.hitGeo, this._hitSymbol).setId(id)
+                else this.hitGeo = undefined
+            }
         }
     }
 
@@ -176,25 +175,32 @@ export class CDSP extends maptalks.Class {
     _updateChooseGeos() {
         const layer = this._chooseLayer
         layer.clear()
-        this._chooseGeos.forEach((geo) => {
-            switch (geo.type) {
-                case 'MultiPoint':
-                    let points = []
-                    geo._geometries.forEach((item) => points.push(item.copy()))
-                    new maptalks.MultiPoint(points, { symbol: this._chooseSymbol }).addTo(layer)
-                    break
-                case 'MultiPolygon':
-                    let polygons = []
-                    geo._geometries.forEach((item) => polygons.push(item.copy()))
-                    new maptalks.MultiPolygon(polygons, { symbol: this._chooseSymbol }).addTo(layer)
-                    break
-                default:
-                    geo.copy()
-                        .updateSymbol(this._chooseSymbol)
-                        .addTo(layer)
-                    break
-            }
-        })
+        this._chooseGeos.forEach((geo) => this._copyGeoUpdateSymbol(geo, this._chooseSymbol))
+    }
+
+    _copyGeoUpdateSymbol(geo, symbol) {
+        const layer = this._chooseLayer
+        switch (geo.type) {
+            case 'MultiPoint':
+                let pointSymbol = {}
+                for (let key in symbol) {
+                    if (key.startsWith('marker')) pointSymbol[key] = symbol[key]
+                }
+                let points = []
+                geo._geometries.forEach((item) =>
+                    points.push(item.copy().updateSymbol(pointSymbol))
+                )
+                return new maptalks.MultiPoint(points).addTo(layer)
+            case 'MultiPolygon':
+                let polygons = []
+                geo._geometries.forEach((item) => polygons.push(item.copy()))
+                return new maptalks.MultiPolygon(polygons, { symbol }).addTo(layer)
+            default:
+                return geo
+                    .copy()
+                    .updateSymbol(symbol)
+                    .addTo(layer)
+        }
     }
 
     _submitCombine(callback) {

@@ -6234,21 +6234,24 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var geos = this.layer.identify(e.coordinate);
-        var _layer = this._chooseLayer;
-        var id = '_hit';
-        if (this._needRefreshSymbol) {
-            var hitGeoCopy = _layer.getGeometryById(id);
-            if (hitGeoCopy) {
-                hitGeoCopy.remove();
-                delete this.hitGeo;
+        var drawing = map._map_tool && map._map_tool.isEnabled();
+        if (!drawing) {
+            var geos = this.layer.identify(e.coordinate);
+            var _layer = this._chooseLayer;
+            var id = '_hit';
+            if (this._needRefreshSymbol) {
+                var hitGeoCopy = _layer.getGeometryById(id);
+                if (hitGeoCopy) {
+                    hitGeoCopy.remove();
+                    delete this.hitGeo;
+                }
+                this._needRefreshSymbol = false;
             }
-            this._needRefreshSymbol = false;
-        }
-        if (geos.length > 0) {
-            this._needRefreshSymbol = true;
-            this.hitGeo = geos[0];
-            if (this._checkIsSameType(this.hitGeo)) this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);else this.hitGeo = undefined;
+            if (geos.length > 0 && !this._needRefreshSymbol) {
+                this._needRefreshSymbol = true;
+                this.hitGeo = geos[0];
+                if (this._checkIsSameType(this.hitGeo)) this._copyGeoUpdateSymbol(this.hitGeo, this._hitSymbol).setId(id);else this.hitGeo = undefined;
+            }
         }
     };
 
@@ -6283,26 +6286,32 @@ var CDSP = function (_maptalks$Class) {
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            switch (geo.type) {
-                case 'MultiPoint':
-                    var points = [];
-                    geo._geometries.forEach(function (item) {
-                        return points.push(item.copy());
-                    });
-                    new maptalks.MultiPoint(points, { symbol: _this3._chooseSymbol }).addTo(layer);
-                    break;
-                case 'MultiPolygon':
-                    var polygons = [];
-                    geo._geometries.forEach(function (item) {
-                        return polygons.push(item.copy());
-                    });
-                    new maptalks.MultiPolygon(polygons, { symbol: _this3._chooseSymbol }).addTo(layer);
-                    break;
-                default:
-                    geo.copy().updateSymbol(_this3._chooseSymbol).addTo(layer);
-                    break;
-            }
+            return _this3._copyGeoUpdateSymbol(geo, _this3._chooseSymbol);
         });
+    };
+
+    CDSP.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
+        var layer = this._chooseLayer;
+        switch (geo.type) {
+            case 'MultiPoint':
+                var pointSymbol = {};
+                for (var key in symbol) {
+                    if (key.startsWith('marker')) pointSymbol[key] = symbol[key];
+                }
+                var points = [];
+                geo._geometries.forEach(function (item) {
+                    return points.push(item.copy().updateSymbol(pointSymbol));
+                });
+                return new maptalks.MultiPoint(points).addTo(layer);
+            case 'MultiPolygon':
+                var polygons = [];
+                geo._geometries.forEach(function (item) {
+                    return polygons.push(item.copy());
+                });
+                return new maptalks.MultiPolygon(polygons, { symbol: symbol }).addTo(layer);
+            default:
+                return geo.copy().updateSymbol(symbol).addTo(layer);
+        }
     };
 
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
