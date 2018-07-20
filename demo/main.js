@@ -14,14 +14,14 @@ const layerSketch = new maptalks.VectorLayer('sketchPad').addTo(map)
 
 const cdmp = new maptalks.CDSP()
 
-const drawTool = new maptalks.DrawTool({ mode: 'LineString' }).addTo(map).disable()
+const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
     const { geometry } = param
     geometry.addTo(layerSketch)
     geometry.on('contextmenu', () => geometry.setMenu(getOptions(geometry)).openMenu())
 })
 
-const modes = ['LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
+const modes = ['Point', 'LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
 let children = []
 modes.map((item) => children.push({ item, click: () => drawTool.setMode(item).enable() }))
 

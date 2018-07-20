@@ -2,8 +2,9 @@ import { Point2D, Intersection } from 'kld-intersections'
 import isEqual from 'lodash/isEqual'
 
 const options = {
-    needCollection: false,
+    enableCollection: false,
     symbol: {
+        markerFill: '#00bcd4',
         lineColor: '#00bcd4',
         lineWidth: 4
     }
@@ -17,7 +18,8 @@ export class CDSP extends maptalks.Class {
         this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
         this._chooseGeos = []
         this._hitSymbol = {
-            lineColor: 'red',
+            markerFill: '#ffa400',
+            lineColor: '#ffa400',
             lineWidth: 4
         }
     }
@@ -43,15 +45,7 @@ export class CDSP extends maptalks.Class {
     submit(callback = () => false) {
         switch (this._mask) {
             case 'combine':
-                this._chooseGeos.forEach((geo) => geo.remove())
-                let geos = []
-                this._chooseLayer.getGeometries().forEach((geo) => {
-                    if (geo.getId() !== '_hit') geos.push(geo.copy())
-                })
-                const symbol = this.geometry.getSymbol()
-                const properties = this.geometry.getProperties()
-                const combine = new maptalks.MultiPolygon(geos, { symbol, properties })
-                callback(combine)
+                this._submitCombine(callback)
                 break
             default:
                 break
@@ -80,7 +74,7 @@ export class CDSP extends maptalks.Class {
         delete this._dblclick
     }
 
-    needCollection(need) {
+    enableCollection(need) {
         this._updateSameType(need)
         return this
     }
@@ -91,9 +85,9 @@ export class CDSP extends maptalks.Class {
     }
 
     _updateSameType(need) {
-        need = need !== undefined ? need : this.options['needCollection']
-        need = need !== undefined ? need : options.needCollection
-        this._sameType = need
+        need = need !== undefined ? need : this.options['enableCollection']
+        need = need !== undefined ? need : options.enableCollection
+        this._enableCollection = need
     }
 
     _updateUpdateSymbol(symbol) {
@@ -143,12 +137,26 @@ export class CDSP extends maptalks.Class {
         if (geos.length > 0) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
-            this.hitGeo
-                .copy()
-                .setId(id)
-                .updateSymbol(this._hitSymbol)
-                .addTo(_layer)
+            if (this._checkIsSameType(this.hitGeo)) {
+                this.hitGeo
+                    .copy()
+                    .setId(id)
+                    .updateSymbol(this._hitSymbol)
+                    .addTo(_layer)
+            } else this.hitGeo = undefined
         }
+    }
+
+    _checkIsSameType(geo) {
+        if (!this._enableCollection) {
+            const typeHit = geo.type
+            const typeThis = this.geometry.type
+            if (typeHit !== typeThis) {
+                const polygonType = ['Polygon', 'MultiPolygon']
+                if (!polygonType.includes(typeHit) || !polygonType.includes(typeThis)) return false
+            }
+        }
+        return true
     }
 
     _clickEvents() {
@@ -181,6 +189,52 @@ export class CDSP extends maptalks.Class {
                     .updateSymbol(this._chooseSymbol)
                     .addTo(layer)
         })
+    }
+
+    _submitCombine(callback) {
+        this._chooseGeos.forEach((geo) => geo.remove())
+        let geos = []
+        this._chooseLayer.getGeometries().forEach((geo) => {
+            if (geo.getId() !== '_hit') {
+                if (geo instanceof maptalks.MultiPolygon)
+                    geo._geometries.forEach((item) => geos.push(item.copy()))
+                else geos.push(geo.copy())
+            }
+        })
+        let combine
+        if (this._enableCollection) {
+        } else combine = this._compositMultiGeo(geos)
+        callback(combine)
+    }
+
+    _compositMultiGeo(geos) {
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+        const options = { symbol, properties }
+        let combine
+        switch (geos[0].type) {
+            case 'Point':
+                if (!symbol) {
+                    let points = []
+                    geos.forEach((geo) => {
+                        const coord = geo.getCoordinates()
+                        const prop = geo.getProperties()
+                        geo = new maptalks.Marker(coord, { properties: prop })
+                        points.push(geo)
+                    })
+                    geos = points
+                }
+                combine = new maptalks.MultiPoint(geos, options)
+                break
+            case 'LineString':
+                combine = new maptalks.MultiLineString(geos, options)
+                break
+            default:
+                break
+                combine = new maptalks.MultiPolygon(geos, options)
+                break
+        }
+        return combine
     }
 }
 

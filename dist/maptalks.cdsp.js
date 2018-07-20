@@ -6104,8 +6104,9 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : _defaults(subClass, superClass); }
 
 var options = {
-    needCollection: false,
+    enableCollection: false,
     symbol: {
+        markerFill: '#00bcd4',
         lineColor: '#00bcd4',
         lineWidth: 4
     }
@@ -6124,7 +6125,8 @@ var CDSP = function (_maptalks$Class) {
         _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
         _this._chooseGeos = [];
         _this._hitSymbol = {
-            lineColor: 'red',
+            markerFill: '#ffa400',
+            lineColor: '#ffa400',
             lineWidth: 4
         };
         return _this;
@@ -6154,17 +6156,7 @@ var CDSP = function (_maptalks$Class) {
 
         switch (this._mask) {
             case 'combine':
-                this._chooseGeos.forEach(function (geo) {
-                    return geo.remove();
-                });
-                var geos = [];
-                this._chooseLayer.getGeometries().forEach(function (geo) {
-                    if (geo.getId() !== '_hit') geos.push(geo.copy());
-                });
-                var symbol = this.geometry.getSymbol();
-                var properties = this.geometry.getProperties();
-                var combine = new maptalks.MultiPolygon(geos, { symbol: symbol, properties: properties });
-                callback(combine);
+                this._submitCombine(callback);
                 break;
             default:
                 break;
@@ -6193,7 +6185,7 @@ var CDSP = function (_maptalks$Class) {
         delete this._dblclick;
     };
 
-    CDSP.prototype.needCollection = function needCollection(need) {
+    CDSP.prototype.enableCollection = function enableCollection(need) {
         this._updateSameType(need);
         return this;
     };
@@ -6204,9 +6196,9 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._updateSameType = function _updateSameType(need) {
-        need = need !== undefined ? need : this.options['needCollection'];
-        need = need !== undefined ? need : options.needCollection;
-        this._sameType = need;
+        need = need !== undefined ? need : this.options['enableCollection'];
+        need = need !== undefined ? need : options.enableCollection;
+        this._enableCollection = need;
     };
 
     CDSP.prototype._updateUpdateSymbol = function _updateUpdateSymbol(symbol) {
@@ -6262,8 +6254,22 @@ var CDSP = function (_maptalks$Class) {
         if (geos.length > 0) {
             this._needRefreshSymbol = true;
             this.hitGeo = geos[0];
-            this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);
+            if (this._checkIsSameType(this.hitGeo)) {
+                this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);
+            } else this.hitGeo = undefined;
         }
+    };
+
+    CDSP.prototype._checkIsSameType = function _checkIsSameType(geo) {
+        if (!this._enableCollection) {
+            var typeHit = geo.type;
+            var typeThis = this.geometry.type;
+            if (typeHit !== typeThis) {
+                var polygonType = ['Polygon', 'MultiPolygon'];
+                if (!polygonType.includes(typeHit) || !polygonType.includes(typeThis)) return false;
+            }
+        }
+        return true;
     };
 
     CDSP.prototype._clickEvents = function _clickEvents() {
@@ -6296,6 +6302,53 @@ var CDSP = function (_maptalks$Class) {
                 new maptalks.MultiPolygon(geos, { symbol: _this3._chooseSymbol }).addTo(layer);
             } else geo.copy().updateSymbol(_this3._chooseSymbol).addTo(layer);
         });
+    };
+
+    CDSP.prototype._submitCombine = function _submitCombine(callback) {
+        this._chooseGeos.forEach(function (geo) {
+            return geo.remove();
+        });
+        var geos = [];
+        this._chooseLayer.getGeometries().forEach(function (geo) {
+            if (geo.getId() !== '_hit') {
+                if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
+                    return geos.push(item.copy());
+                });else geos.push(geo.copy());
+            }
+        });
+        var combine = void 0;
+        if (this._enableCollection) {} else combine = this._compositMultiGeo(geos);
+        callback(combine);
+    };
+
+    CDSP.prototype._compositMultiGeo = function _compositMultiGeo(geos) {
+        var symbol = this.geometry.getSymbol();
+        var properties = this.geometry.getProperties();
+        var options = { symbol: symbol, properties: properties };
+        var combine = void 0;
+        switch (geos[0].type) {
+            case 'Point':
+                if (!symbol) {
+                    var points = [];
+                    geos.forEach(function (geo) {
+                        var coord = geo.getCoordinates();
+                        var prop = geo.getProperties();
+                        geo = new maptalks.Marker(coord, { properties: prop });
+                        points.push(geo);
+                    });
+                    geos = points;
+                }
+                combine = new maptalks.MultiPoint(geos, options);
+                break;
+            case 'LineString':
+                combine = new maptalks.MultiLineString(geos, options);
+                break;
+            default:
+                break;
+                combine = new maptalks.MultiPolygon(geos, options);
+                break;
+        }
+        return combine;
     };
 
     return CDSP;
