@@ -2231,7 +2231,7 @@ var CDSP = function (_maptalks$Class) {
             this.geometry = geometry;
             this.layer = geometry._layer;
             if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
-            this._addTo(layer.map);
+            this._addTo(this.layer.map);
             this._chooseGeos = [geometry];
             this._updateChooseGeos();
         }
@@ -2344,21 +2344,25 @@ var CDSP = function (_maptalks$Class) {
         var layer = this._chooseLayer;
         switch (geo.type) {
             case 'MultiPoint':
-                var pointSymbol = {};
+                var symbolPoint = {
+                    markerType: 'path',
+                    markerPath: [{
+                        path: 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
+                        fill: '#DE3333'
+                    }],
+                    markerPathWidth: 16,
+                    markerPathHeight: 23,
+                    markerWidth: 24,
+                    markerHeight: 34
+                };
                 for (var key in symbol) {
-                    if (key.startsWith('marker')) pointSymbol[key] = symbol[key];
+                    symbolPoint[key] = symbol[key];
                 }
-                var points = [];
-                geo._geometries.forEach(function (item) {
-                    return points.push(item.copy().updateSymbol(pointSymbol));
-                });
-                return new maptalks.MultiPoint(points).addTo(layer);
+                return new maptalks.MultiPoint(geo.copy()._geometries, {
+                    symbol: symbolPoint
+                }).addTo(layer);
             case 'MultiPolygon':
-                var polygons = [];
-                geo._geometries.forEach(function (item) {
-                    return polygons.push(item.copy());
-                });
-                return new maptalks.MultiPolygon(polygons, { symbol: symbol }).addTo(layer);
+                return new maptalks.MultiPolygon(geo.copy()._geometries, { symbol: symbol }).addTo(layer);
             default:
                 return geo.copy().updateSymbol(symbol).addTo(layer);
         }
