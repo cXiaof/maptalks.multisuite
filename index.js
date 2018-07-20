@@ -1,4 +1,3 @@
-import { Point2D, Intersection } from 'kld-intersections'
 import isEqual from 'lodash/isEqual'
 
 const options = {
@@ -24,18 +23,24 @@ export class CDSP extends maptalks.Class {
         }
     }
 
+    setSymbol(symbol) {
+        this._updateUpdateSymbol(symbol)
+        return this
+    }
+
+    enableCollection(need) {
+        this._updateSameType(need)
+        return this
+    }
+
     combine(geometry) {
-        this._mask = 'combine'
         if (geometry instanceof maptalks.Geometry) {
             if (this.geometry) this.remove()
             this._task = 'combine'
             this.geometry = geometry
-            let layer
-            if (geometry.type.startsWith('Multi')) layer = geometry._geometries[0]._layer
-            else layer = geometry._layer
-            this.layer = layer
-            const map = layer.map
-            this._addTo(map)
+            this.layer = geometry._layer
+            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
+            this._addTo(layer.map)
             this._chooseGeos = [geometry]
             this._updateChooseGeos()
         }
@@ -43,7 +48,7 @@ export class CDSP extends maptalks.Class {
     }
 
     submit(callback = () => false) {
-        switch (this._mask) {
+        switch (this._task) {
             case 'combine':
                 this._submitCombine(callback)
                 break
@@ -74,24 +79,14 @@ export class CDSP extends maptalks.Class {
         delete this._dblclick
     }
 
-    enableCollection(need) {
-        this._updateSameType(need)
-        return this
-    }
-
-    setSymbol(symbol) {
-        this._updateUpdateSymbol(symbol)
-        return this
+    _updateUpdateSymbol(symbol) {
+        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
     }
 
     _updateSameType(need) {
         need = need !== undefined ? need : this.options['enableCollection']
         need = need !== undefined ? need : options.enableCollection
         this._enableCollection = need
-    }
-
-    _updateUpdateSymbol(symbol) {
-        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
     }
 
     _addTo(map) {
@@ -146,6 +141,31 @@ export class CDSP extends maptalks.Class {
         }
     }
 
+    _copyGeoUpdateSymbol(geo, symbol) {
+        const layer = this._chooseLayer
+        switch (geo.type) {
+            case 'MultiPoint':
+                let pointSymbol = {}
+                for (let key in symbol) {
+                    if (key.startsWith('marker')) pointSymbol[key] = symbol[key]
+                }
+                let points = []
+                geo._geometries.forEach((item) =>
+                    points.push(item.copy().updateSymbol(pointSymbol))
+                )
+                return new maptalks.MultiPoint(points).addTo(layer)
+            case 'MultiPolygon':
+                let polygons = []
+                geo._geometries.forEach((item) => polygons.push(item.copy()))
+                return new maptalks.MultiPolygon(polygons, { symbol }).addTo(layer)
+            default:
+                return geo
+                    .copy()
+                    .updateSymbol(symbol)
+                    .addTo(layer)
+        }
+    }
+
     _checkIsSameType(geo) {
         if (!this._enableCollection) {
             const typeHit = geo.type
@@ -176,31 +196,6 @@ export class CDSP extends maptalks.Class {
         const layer = this._chooseLayer
         layer.clear()
         this._chooseGeos.forEach((geo) => this._copyGeoUpdateSymbol(geo, this._chooseSymbol))
-    }
-
-    _copyGeoUpdateSymbol(geo, symbol) {
-        const layer = this._chooseLayer
-        switch (geo.type) {
-            case 'MultiPoint':
-                let pointSymbol = {}
-                for (let key in symbol) {
-                    if (key.startsWith('marker')) pointSymbol[key] = symbol[key]
-                }
-                let points = []
-                geo._geometries.forEach((item) =>
-                    points.push(item.copy().updateSymbol(pointSymbol))
-                )
-                return new maptalks.MultiPoint(points).addTo(layer)
-            case 'MultiPolygon':
-                let polygons = []
-                geo._geometries.forEach((item) => polygons.push(item.copy()))
-                return new maptalks.MultiPolygon(polygons, { symbol }).addTo(layer)
-            default:
-                return geo
-                    .copy()
-                    .updateSymbol(symbol)
-                    .addTo(layer)
-        }
     }
 
     _submitCombine(callback) {
