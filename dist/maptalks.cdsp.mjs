@@ -6133,7 +6133,7 @@ var CDSP = function (_maptalks$Class) {
             this._task = 'combine';
             this.geometry = geometry;
             var layer = void 0;
-            if (geometry instanceof maptalks.MultiPolygon) layer = geometry._geometries[0]._layer;else layer = geometry._layer;
+            if (geometry.type.startsWith('Multi')) layer = geometry._geometries[0]._layer;else layer = geometry._layer;
             this.layer = layer;
             var _map = layer.map;
             this._addTo(_map);
@@ -6248,9 +6248,7 @@ var CDSP = function (_maptalks$Class) {
         if (geos.length > 0) {
             this._needRefreshSymbol = true;
             this.hitGeo = geos[0];
-            if (this._checkIsSameType(this.hitGeo)) {
-                this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);
-            } else this.hitGeo = undefined;
+            if (this._checkIsSameType(this.hitGeo)) this.hitGeo.copy().setId(id).updateSymbol(this._hitSymbol).addTo(_layer);else this.hitGeo = undefined;
         }
     };
 
@@ -6258,10 +6256,7 @@ var CDSP = function (_maptalks$Class) {
         if (!this._enableCollection) {
             var typeHit = geo.type;
             var typeThis = this.geometry.type;
-            if (typeHit !== typeThis) {
-                var polygonType = ['Polygon', 'MultiPolygon'];
-                if (!polygonType.includes(typeHit) || !polygonType.includes(typeThis)) return false;
-            }
+            if (!typeHit.includes(typeThis) && !typeThis.includes(typeHit)) return false;
         }
         return true;
     };
@@ -6288,13 +6283,25 @@ var CDSP = function (_maptalks$Class) {
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            if (geo.type === 'MultiPolygon') {
-                var geos = [];
-                geo._geometries.forEach(function (item) {
-                    return geos.push(item.copy());
-                });
-                new maptalks.MultiPolygon(geos, { symbol: _this3._chooseSymbol }).addTo(layer);
-            } else geo.copy().updateSymbol(_this3._chooseSymbol).addTo(layer);
+            switch (geo.type) {
+                case 'MultiPoint':
+                    var points = [];
+                    geo._geometries.forEach(function (item) {
+                        return points.push(item.copy());
+                    });
+                    new maptalks.MultiPoint(points, { symbol: _this3._chooseSymbol }).addTo(layer);
+                    break;
+                case 'MultiPolygon':
+                    var polygons = [];
+                    geo._geometries.forEach(function (item) {
+                        return polygons.push(item.copy());
+                    });
+                    new maptalks.MultiPolygon(polygons, { symbol: _this3._chooseSymbol }).addTo(layer);
+                    break;
+                default:
+                    geo.copy().updateSymbol(_this3._chooseSymbol).addTo(layer);
+                    break;
+            }
         });
     };
 
@@ -6305,43 +6312,31 @@ var CDSP = function (_maptalks$Class) {
         var geos = [];
         this._chooseLayer.getGeometries().forEach(function (geo) {
             if (geo.getId() !== '_hit') {
-                if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
+                if (geo.type.startsWith('Multi')) geo._geometries.forEach(function (item) {
                     return geos.push(item.copy());
                 });else geos.push(geo.copy());
             }
         });
-        var combine = void 0;
-        if (this._enableCollection) {} else combine = this._compositMultiGeo(geos);
-        callback(combine);
+        callback(this._compositMultiGeo(geos));
     };
 
     CDSP.prototype._compositMultiGeo = function _compositMultiGeo(geos) {
-        var symbol = this.geometry.getSymbol();
-        var properties = this.geometry.getProperties();
-        var options = { symbol: symbol, properties: properties };
         var combine = void 0;
         switch (geos[0].type) {
             case 'Point':
-                if (!symbol) {
-                    var points = [];
-                    geos.forEach(function (geo) {
-                        var coord = geo.getCoordinates();
-                        var prop = geo.getProperties();
-                        geo = new maptalks.Marker(coord, { properties: prop });
-                        points.push(geo);
-                    });
-                    geos = points;
-                }
-                combine = new maptalks.MultiPoint(geos, options);
+                combine = new maptalks.MultiPoint(geos);
                 break;
             case 'LineString':
-                combine = new maptalks.MultiLineString(geos, options);
+                combine = new maptalks.MultiLineString(geos);
                 break;
             default:
-                break;
-                combine = new maptalks.MultiPolygon(geos, options);
+                combine = new maptalks.MultiPolygon(geos);
                 break;
         }
+        var symbol = this.geometry.getSymbol();
+        var properties = this.geometry.getProperties();
+        combine.setSymbol(symbol);
+        combine.setProperties(properties);
         return combine;
     };
 

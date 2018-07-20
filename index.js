@@ -31,7 +31,7 @@ export class CDSP extends maptalks.Class {
             this._task = 'combine'
             this.geometry = geometry
             let layer
-            if (geometry instanceof maptalks.MultiPolygon) layer = geometry._geometries[0]._layer
+            if (geometry.type.startsWith('Multi')) layer = geometry._geometries[0]._layer
             else layer = geometry._layer
             this.layer = layer
             const map = layer.map
@@ -137,13 +137,13 @@ export class CDSP extends maptalks.Class {
         if (geos.length > 0) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
-            if (this._checkIsSameType(this.hitGeo)) {
+            if (this._checkIsSameType(this.hitGeo))
                 this.hitGeo
                     .copy()
                     .setId(id)
                     .updateSymbol(this._hitSymbol)
                     .addTo(_layer)
-            } else this.hitGeo = undefined
+            else this.hitGeo = undefined
         }
     }
 
@@ -151,10 +151,7 @@ export class CDSP extends maptalks.Class {
         if (!this._enableCollection) {
             const typeHit = geo.type
             const typeThis = this.geometry.type
-            if (typeHit !== typeThis) {
-                const polygonType = ['Polygon', 'MultiPolygon']
-                if (!polygonType.includes(typeHit) || !polygonType.includes(typeThis)) return false
-            }
+            if (!typeHit.includes(typeThis) && !typeThis.includes(typeHit)) return false
         }
         return true
     }
@@ -180,14 +177,23 @@ export class CDSP extends maptalks.Class {
         const layer = this._chooseLayer
         layer.clear()
         this._chooseGeos.forEach((geo) => {
-            if (geo.type === 'MultiPolygon') {
-                let geos = []
-                geo._geometries.forEach((item) => geos.push(item.copy()))
-                new maptalks.MultiPolygon(geos, { symbol: this._chooseSymbol }).addTo(layer)
-            } else
-                geo.copy()
-                    .updateSymbol(this._chooseSymbol)
-                    .addTo(layer)
+            switch (geo.type) {
+                case 'MultiPoint':
+                    let points = []
+                    geo._geometries.forEach((item) => points.push(item.copy()))
+                    new maptalks.MultiPoint(points, { symbol: this._chooseSymbol }).addTo(layer)
+                    break
+                case 'MultiPolygon':
+                    let polygons = []
+                    geo._geometries.forEach((item) => polygons.push(item.copy()))
+                    new maptalks.MultiPolygon(polygons, { symbol: this._chooseSymbol }).addTo(layer)
+                    break
+                default:
+                    geo.copy()
+                        .updateSymbol(this._chooseSymbol)
+                        .addTo(layer)
+                    break
+            }
         })
     }
 
@@ -196,44 +202,31 @@ export class CDSP extends maptalks.Class {
         let geos = []
         this._chooseLayer.getGeometries().forEach((geo) => {
             if (geo.getId() !== '_hit') {
-                if (geo instanceof maptalks.MultiPolygon)
+                if (geo.type.startsWith('Multi'))
                     geo._geometries.forEach((item) => geos.push(item.copy()))
                 else geos.push(geo.copy())
             }
         })
-        let combine
-        if (this._enableCollection) {
-        } else combine = this._compositMultiGeo(geos)
-        callback(combine)
+        callback(this._compositMultiGeo(geos))
     }
 
     _compositMultiGeo(geos) {
-        const symbol = this.geometry.getSymbol()
-        const properties = this.geometry.getProperties()
-        const options = { symbol, properties }
         let combine
         switch (geos[0].type) {
             case 'Point':
-                if (!symbol) {
-                    let points = []
-                    geos.forEach((geo) => {
-                        const coord = geo.getCoordinates()
-                        const prop = geo.getProperties()
-                        geo = new maptalks.Marker(coord, { properties: prop })
-                        points.push(geo)
-                    })
-                    geos = points
-                }
-                combine = new maptalks.MultiPoint(geos, options)
+                combine = new maptalks.MultiPoint(geos)
                 break
             case 'LineString':
-                combine = new maptalks.MultiLineString(geos, options)
+                combine = new maptalks.MultiLineString(geos)
                 break
             default:
-                break
-                combine = new maptalks.MultiPolygon(geos, options)
+                combine = new maptalks.MultiPolygon(geos)
                 break
         }
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+        combine.setSymbol(symbol)
+        combine.setProperties(properties)
         return combine
     }
 }
