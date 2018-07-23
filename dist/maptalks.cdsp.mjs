@@ -2186,12 +2186,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : _defaults(subClass, superClass); }
 
 var options = {
-    enableCollection: false,
-    symbol: {
-        markerFill: '#00bcd4',
-        lineColor: '#00bcd4',
-        lineWidth: 4
-    }
+    enableCollection: false
 };
 
 var CDSP = function (_maptalks$Class) {
@@ -2202,22 +2197,13 @@ var CDSP = function (_maptalks$Class) {
 
         var _this = _possibleConstructorReturn(this, _maptalks$Class.call(this, options));
 
-        _this._updateSameType();
-        _this._updateUpdateSymbol();
         _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
         _this._chooseGeos = [];
-        _this._hitSymbol = {
-            markerFill: '#ffa400',
-            lineColor: '#ffa400',
-            lineWidth: 4
-        };
+        _this._colorHit = '#ffa400';
+        _this._colorChoose = '#00bcd4';
+        _this._updateSameType();
         return _this;
     }
-
-    CDSP.prototype.setSymbol = function setSymbol(symbol) {
-        this._updateUpdateSymbol(symbol);
-        return this;
-    };
 
     CDSP.prototype.enableCollection = function enableCollection(need) {
         this._updateSameType(need);
@@ -2225,6 +2211,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype.combine = function combine(geometry) {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
         if (geometry instanceof maptalks.Geometry) {
             if (this.geometry) this.remove();
             this._task = 'combine';
@@ -2234,6 +2221,19 @@ var CDSP = function (_maptalks$Class) {
             this._addTo(this.layer.map);
             this._chooseGeos = [geometry];
             this._updateChooseGeos();
+        }
+        return this;
+    };
+
+    CDSP.prototype.decompose = function decompose(geometry) {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
+        if (geometry instanceof maptalks.GeometryCollection) {
+            if (this.geometry) this.remove();
+            this._task = 'decompose';
+            this.geometry = geometry;
+            this.layer = geometry._layer;
+            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
+            console.log(geometry);
         }
         return this;
     };
@@ -2259,23 +2259,14 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.remove = function remove() {
         var map = this._map;
-        var layer = map.getLayer(this._layerName);
-        if (layer) layer.remove();
+        if (this._chooseLayer) this._chooseLayer.remove();
         map.config({ doubleClickZoom: this.doubleClickZoom });
         this._offMapEvents();
-        this._chooseLayer.remove();
         delete this._task;
         delete this._chooseLayer;
-        delete this.geometry;
-        delete this.doubleClickZoom;
-        delete this._chooseGeos;
         delete this._mousemove;
         delete this._click;
         delete this._dblclick;
-    };
-
-    CDSP.prototype._updateUpdateSymbol = function _updateUpdateSymbol(symbol) {
-        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol;
     };
 
     CDSP.prototype._updateSameType = function _updateSameType(need) {
@@ -2285,8 +2276,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._addTo = function _addTo(map) {
-        var layer = map.getLayer(this._layerName);
-        if (layer) this.remove();
+        if (this._chooseLayer) this.remove();
         this.doubleClickZoom = !!map.options.doubleClickZoom;
         map.config({ doubleClickZoom: false });
         this._map = map;
@@ -2319,67 +2309,67 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var drawing = map._map_tool && map._map_tool.isEnabled();
-        if (!drawing) {
-            var geos = this.layer.identify(e.coordinate);
-            var _layer = this._chooseLayer;
-            var id = '_hit';
-            if (this._needRefreshSymbol) {
-                var hitGeoCopy = _layer.getGeometryById(id);
-                if (hitGeoCopy) {
-                    hitGeoCopy.remove();
-                    delete this.hitGeo;
-                }
-                this._needRefreshSymbol = false;
+        var geos = this.layer.identify(e.coordinate);
+        var id = '_hit';
+        if (this._needRefreshSymbol) {
+            var hitGeoCopy = this._chooseLayer.getGeometryById(id);
+            if (hitGeoCopy) {
+                hitGeoCopy.remove();
+                delete this.hitGeo;
             }
-            if (geos.length > 0 && !this._needRefreshSymbol) {
-                this._needRefreshSymbol = true;
-                this.hitGeo = geos[0];
-                if (this._checkIsSameType(this.hitGeo)) this._copyGeoUpdateSymbol(this.hitGeo, this._hitSymbol).setId(id);else this.hitGeo = undefined;
-            }
+            this._needRefreshSymbol = false;
         }
-    };
-
-    CDSP.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
-        var layer = this._chooseLayer;
-        switch (geo.type) {
-            case 'MultiPoint':
-                var symbolPoint = {
-                    markerType: 'path',
-                    markerPath: [{
-                        path: 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
-                        fill: '#DE3333'
-                    }],
-                    markerPathWidth: 16,
-                    markerPathHeight: 23,
-                    markerWidth: 24,
-                    markerHeight: 34
-                };
-                for (var key in symbol) {
-                    symbolPoint[key] = symbol[key];
-                }
-                return new maptalks.MultiPoint(geo.copy()._geometries, {
-                    symbol: symbolPoint
-                }).addTo(layer);
-            case 'MultiPolygon':
-                return new maptalks.MultiPolygon(geo.copy()._geometries, { symbol: symbol }).addTo(layer);
-            default:
-                return geo.copy().updateSymbol(symbol).addTo(layer);
+        if (geos.length > 0 && !this._needRefreshSymbol) {
+            this._needRefreshSymbol = true;
+            this.hitGeo = geos[0];
+            if (this._checkIsSameType(this.hitGeo)) {
+                var hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit');
+                this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id);
+            } else delete this.hitGeo;
         }
     };
 
     CDSP.prototype._checkIsSameType = function _checkIsSameType(geo) {
-        if (!this._enableCollection) {
-            var typeHit = geo.type;
-            var typeThis = this.geometry.type;
-            if (!typeHit.includes(typeThis) && !typeThis.includes(typeHit)) return false;
+        if (this._enableCollection) return true;
+        var typeHit = geo.type;
+        var typeThis = this.geometry.type;
+        return typeHit.includes(typeThis) || typeThis.includes(typeHit);
+    };
+
+    CDSP.prototype._getSymbolOrDefault = function _getSymbolOrDefault(geo, type) {
+        var symbol = geo.getSymbol();
+        var color = this['_color' + type];
+        var lineWidth = 4;
+        if (symbol) {
+            for (var key in symbol) {
+                if (key.endsWith('Fill') || key.endsWith('Color')) symbol[key] = color;
+            }
+            symbol.lineWidth = lineWidth;
+        } else {
+            if (geo.type.endsWith('Point')) symbol = {
+                markerFill: color,
+                markerType: 'path',
+                markerPath: [{
+                    path: 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
+                    fill: '#DE3333'
+                }],
+                markerPathWidth: 16,
+                markerPathHeight: 23,
+                markerWidth: 24,
+                markerHeight: 34
+            };else symbol = { lineColor: color, lineWidth: lineWidth };
         }
-        return true;
+        return symbol;
+    };
+
+    CDSP.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
+        var layer = this._chooseLayer;
+        geo = geo.copy().updateSymbol(symbol);
+        return geo.addTo(layer);
     };
 
     CDSP.prototype._clickEvents = function _clickEvents() {
-        var drawing = map._map_tool && map._map_tool.isEnabled();
-        if (!drawing && this.hitGeo) {
+        if (this.hitGeo) {
             var coordHit = this.hitGeo.getCoordinates();
             var coordThis = this.geometry.getCoordinates();
             if (isEqual_1(coordHit, coordThis)) return null;
@@ -2399,7 +2389,8 @@ var CDSP = function (_maptalks$Class) {
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            return _this3._copyGeoUpdateSymbol(geo, _this3._chooseSymbol);
+            var chooseSymbol = _this3._getSymbolOrDefault(geo, 'Choose');
+            _this3._copyGeoUpdateSymbol(geo, chooseSymbol);
         });
     };
 
@@ -2435,6 +2426,7 @@ var CDSP = function (_maptalks$Class) {
         var properties = this.geometry.getProperties();
         combine.setSymbol(symbol);
         combine.setProperties(properties);
+        combine.addTo(this.layer);
         return combine;
     };
 

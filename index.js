@@ -1,31 +1,17 @@
 import isEqual from 'lodash/isEqual'
 
 const options = {
-    enableCollection: false,
-    symbol: {
-        markerFill: '#00bcd4',
-        lineColor: '#00bcd4',
-        lineWidth: 4
-    }
+    enableCollection: false
 }
 
 export class CDSP extends maptalks.Class {
     constructor(options) {
         super(options)
-        this._updateSameType()
-        this._updateUpdateSymbol()
         this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
         this._chooseGeos = []
-        this._hitSymbol = {
-            markerFill: '#ffa400',
-            lineColor: '#ffa400',
-            lineWidth: 4
-        }
-    }
-
-    setSymbol(symbol) {
-        this._updateUpdateSymbol(symbol)
-        return this
+        this._colorHit = '#ffa400'
+        this._colorChoose = '#00bcd4'
+        this._updateSameType()
     }
 
     enableCollection(need) {
@@ -34,6 +20,7 @@ export class CDSP extends maptalks.Class {
     }
 
     combine(geometry) {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
         if (geometry instanceof maptalks.Geometry) {
             if (this.geometry) this.remove()
             this._task = 'combine'
@@ -43,6 +30,19 @@ export class CDSP extends maptalks.Class {
             this._addTo(this.layer.map)
             this._chooseGeos = [geometry]
             this._updateChooseGeos()
+        }
+        return this
+    }
+
+    decompose(geometry) {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
+        if (geometry instanceof maptalks.GeometryCollection) {
+            if (this.geometry) this.remove()
+            this._task = 'decompose'
+            this.geometry = geometry
+            this.layer = geometry._layer
+            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
+            console.log(geometry)
         }
         return this
     }
@@ -64,23 +64,14 @@ export class CDSP extends maptalks.Class {
 
     remove() {
         const map = this._map
-        const layer = map.getLayer(this._layerName)
-        if (layer) layer.remove()
+        if (this._chooseLayer) this._chooseLayer.remove()
         map.config({ doubleClickZoom: this.doubleClickZoom })
         this._offMapEvents()
-        this._chooseLayer.remove()
         delete this._task
         delete this._chooseLayer
-        delete this.geometry
-        delete this.doubleClickZoom
-        delete this._chooseGeos
         delete this._mousemove
         delete this._click
         delete this._dblclick
-    }
-
-    _updateUpdateSymbol(symbol) {
-        this._chooseSymbol = symbol || this.options['symbol'] || options.symbol
     }
 
     _updateSameType(need) {
@@ -90,8 +81,7 @@ export class CDSP extends maptalks.Class {
     }
 
     _addTo(map) {
-        const layer = map.getLayer(this._layerName)
-        if (layer) this.remove()
+        if (this._chooseLayer) this.remove()
         this.doubleClickZoom = !!map.options.doubleClickZoom
         map.config({ doubleClickZoom: false })
         this._map = map
@@ -118,34 +108,46 @@ export class CDSP extends maptalks.Class {
     }
 
     _mousemoveEvents(e) {
-        const drawing = map._map_tool && map._map_tool.isEnabled()
-        if (!drawing) {
-            const geos = this.layer.identify(e.coordinate)
-            const _layer = this._chooseLayer
-            const id = '_hit'
-            if (this._needRefreshSymbol) {
-                const hitGeoCopy = _layer.getGeometryById(id)
-                if (hitGeoCopy) {
-                    hitGeoCopy.remove()
-                    delete this.hitGeo
-                }
-                this._needRefreshSymbol = false
+        const geos = this.layer.identify(e.coordinate)
+        const id = '_hit'
+        if (this._needRefreshSymbol) {
+            const hitGeoCopy = this._chooseLayer.getGeometryById(id)
+            if (hitGeoCopy) {
+                hitGeoCopy.remove()
+                delete this.hitGeo
             }
-            if (geos.length > 0 && !this._needRefreshSymbol) {
-                this._needRefreshSymbol = true
-                this.hitGeo = geos[0]
-                if (this._checkIsSameType(this.hitGeo))
-                    this._copyGeoUpdateSymbol(this.hitGeo, this._hitSymbol).setId(id)
-                else this.hitGeo = undefined
-            }
+            this._needRefreshSymbol = false
+        }
+        if (geos.length > 0 && !this._needRefreshSymbol) {
+            this._needRefreshSymbol = true
+            this.hitGeo = geos[0]
+            if (this._checkIsSameType(this.hitGeo)) {
+                const hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit')
+                this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id)
+            } else delete this.hitGeo
         }
     }
 
-    _copyGeoUpdateSymbol(geo, symbol) {
-        const layer = this._chooseLayer
-        switch (geo.type) {
-            case 'MultiPoint':
-                const symbolPoint = {
+    _checkIsSameType(geo) {
+        if (this._enableCollection) return true
+        const typeHit = geo.type
+        const typeThis = this.geometry.type
+        return typeHit.includes(typeThis) || typeThis.includes(typeHit)
+    }
+
+    _getSymbolOrDefault(geo, type) {
+        let symbol = geo.getSymbol()
+        const color = this[`_color${type}`]
+        const lineWidth = 4
+        if (symbol) {
+            for (let key in symbol) {
+                if (key.endsWith('Fill') || key.endsWith('Color')) symbol[key] = color
+            }
+            symbol.lineWidth = lineWidth
+        } else {
+            if (geo.type.endsWith('Point'))
+                symbol = {
+                    markerFill: color,
                     markerType: 'path',
                     markerPath: [
                         {
@@ -159,34 +161,19 @@ export class CDSP extends maptalks.Class {
                     markerWidth: 24,
                     markerHeight: 34
                 }
-                for (let key in symbol) {
-                    symbolPoint[key] = symbol[key]
-                }
-                return new maptalks.MultiPoint(geo.copy()._geometries, {
-                    symbol: symbolPoint
-                }).addTo(layer)
-            case 'MultiPolygon':
-                return new maptalks.MultiPolygon(geo.copy()._geometries, { symbol }).addTo(layer)
-            default:
-                return geo
-                    .copy()
-                    .updateSymbol(symbol)
-                    .addTo(layer)
+            else symbol = { lineColor: color, lineWidth }
         }
+        return symbol
     }
 
-    _checkIsSameType(geo) {
-        if (!this._enableCollection) {
-            const typeHit = geo.type
-            const typeThis = this.geometry.type
-            if (!typeHit.includes(typeThis) && !typeThis.includes(typeHit)) return false
-        }
-        return true
+    _copyGeoUpdateSymbol(geo, symbol) {
+        const layer = this._chooseLayer
+        geo = geo.copy().updateSymbol(symbol)
+        return geo.addTo(layer)
     }
 
     _clickEvents() {
-        const drawing = map._map_tool && map._map_tool.isEnabled()
-        if (!drawing && this.hitGeo) {
+        if (this.hitGeo) {
             const coordHit = this.hitGeo.getCoordinates()
             const coordThis = this.geometry.getCoordinates()
             if (isEqual(coordHit, coordThis)) return null
@@ -204,7 +191,10 @@ export class CDSP extends maptalks.Class {
     _updateChooseGeos() {
         const layer = this._chooseLayer
         layer.clear()
-        this._chooseGeos.forEach((geo) => this._copyGeoUpdateSymbol(geo, this._chooseSymbol))
+        this._chooseGeos.forEach((geo) => {
+            const chooseSymbol = this._getSymbolOrDefault(geo, 'Choose')
+            this._copyGeoUpdateSymbol(geo, chooseSymbol)
+        })
     }
 
     _submitCombine(callback) {
@@ -237,6 +227,7 @@ export class CDSP extends maptalks.Class {
         const properties = this.geometry.getProperties()
         combine.setSymbol(symbol)
         combine.setProperties(properties)
+        combine.addTo(this.layer)
         return combine
     }
 }

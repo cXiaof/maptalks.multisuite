@@ -54,12 +54,19 @@ const getOptions = (geometry) => {
             },
             '-',
             {
+                item: 'decompose',
+                click: () => {
+                    cdmp.decompose(geometry)
+                    console.log('decompose')
+                }
+            },
+            '-',
+            {
                 item: 'submit',
                 click: () => {
-                    cdmp.submit((geo) => {
-                        geo.addTo(layerSketch)
+                    cdmp.submit((geo) =>
                         geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
-                    })
+                    )
                 }
             },
             '-',
