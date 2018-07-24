@@ -64,9 +64,11 @@ const getOptions = (geometry) => {
             {
                 item: 'submit',
                 click: () => {
-                    cdmp.submit((geo) =>
+                    cdmp.submit((result, deals) => {
+                        const geo = result
                         geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
-                    )
+                        console.log(deals)
+                    })
                 }
             },
             '-',

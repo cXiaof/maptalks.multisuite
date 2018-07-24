@@ -2198,6 +2198,7 @@ var CDSP = function (_maptalks$Class) {
         var _this = _possibleConstructorReturn(this, _maptalks$Class.call(this, options));
 
         _this._layerName = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP';
+        _this._layerTMP = maptalks.INTERNAL_LAYER_PREFIX + '_CDSP_TMP';
         _this._chooseGeos = [];
         _this._colorHit = '#ffa400';
         _this._colorChoose = '#00bcd4';
@@ -2226,6 +2227,8 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype.decompose = function decompose(geometry) {
+        var _this2 = this;
+
         if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
         if (geometry instanceof maptalks.GeometryCollection) {
             if (this.geometry) this.remove();
@@ -2233,7 +2236,12 @@ var CDSP = function (_maptalks$Class) {
             this.geometry = geometry;
             this.layer = geometry._layer;
             if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
-            console.log(geometry);
+            this._addTo(this.layer.map);
+            geometry._geometries.forEach(function (geo) {
+                return geo.copy().addTo(_this2._tmpLayer);
+            });
+            this._chooseGeos = this._tmpLayer.getGeometries();
+            this._updateChooseGeos();
         }
         return this;
     };
@@ -2247,6 +2255,9 @@ var CDSP = function (_maptalks$Class) {
             case 'combine':
                 this._submitCombine(callback);
                 break;
+            case 'decompose':
+                this._submitDecompose(callback);
+                break;
             default:
                 break;
         }
@@ -2259,10 +2270,11 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.remove = function remove() {
         var map = this._map;
+        if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
-        map.config({ doubleClickZoom: this.doubleClickZoom });
         this._offMapEvents();
         delete this._task;
+        delete this._tmpLayer;
         delete this._chooseLayer;
         delete this._mousemove;
         delete this._click;
@@ -2277,25 +2289,25 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._addTo = function _addTo(map) {
         if (this._chooseLayer) this.remove();
-        this.doubleClickZoom = !!map.options.doubleClickZoom;
-        map.config({ doubleClickZoom: false });
         this._map = map;
+        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map);
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
+        this._tmpLayer.bringToFront();
         this._chooseLayer.bringToFront();
         this._registerMapEvents();
         return this;
     };
 
     CDSP.prototype._registerMapEvents = function _registerMapEvents() {
-        var _this2 = this;
+        var _this3 = this;
 
         if (!this._mousemove) {
             var _map = this._map;
             this._mousemove = function (e) {
-                return _this2._mousemoveEvents(e);
+                return _this3._mousemoveEvents(e);
             };
-            this._click = function () {
-                return _this2._clickEvents();
+            this._click = function (e) {
+                return _this3._clickEvents(e);
             };
             _map.on('mousemove', this._mousemove, this);
             _map.on('click', this._click, this);
@@ -2309,6 +2321,19 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
+        switch (this._task) {
+            case 'combine':
+                this._mousemoveCombine(e);
+                break;
+            case 'decompose':
+                this._mousemoveDecompose(e);
+                break;
+            default:
+                break;
+        }
+    };
+
+    CDSP.prototype._mousemoveCombine = function _mousemoveCombine(e) {
         var geos = this.layer.identify(e.coordinate);
         var id = '_hit';
         if (this._needRefreshSymbol) {
@@ -2368,7 +2393,39 @@ var CDSP = function (_maptalks$Class) {
         return geo.addTo(layer);
     };
 
-    CDSP.prototype._clickEvents = function _clickEvents() {
+    CDSP.prototype._mousemoveDecompose = function _mousemoveDecompose(e) {
+        var geos = this._tmpLayer.identify(e.coordinate);
+        var id = '_hit';
+        if (this._needRefreshSymbol) {
+            var hitGeoCopy = this._chooseLayer.getGeometryById(id);
+            if (hitGeoCopy) {
+                hitGeoCopy.remove();
+                delete this.hitGeo;
+            }
+            this._needRefreshSymbol = false;
+        }
+        if (geos.length > 0 && !this._needRefreshSymbol) {
+            this._needRefreshSymbol = true;
+            this.hitGeo = geos[0];
+            var hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit');
+            this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id);
+        }
+    };
+
+    CDSP.prototype._clickEvents = function _clickEvents(e) {
+        switch (this._task) {
+            case 'combine':
+                this._clickCombine();
+                break;
+            case 'decompose':
+                this._clickDecompose(e);
+                break;
+            default:
+                break;
+        }
+    };
+
+    CDSP.prototype._clickCombine = function _clickCombine() {
         if (this.hitGeo) {
             var coordHit = this.hitGeo.getCoordinates();
             var coordThis = this.geometry.getCoordinates();
@@ -2384,19 +2441,40 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
-        var _this3 = this;
+        var _this4 = this;
 
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            var chooseSymbol = _this3._getSymbolOrDefault(geo, 'Choose');
-            _this3._copyGeoUpdateSymbol(geo, chooseSymbol);
+            var chooseSymbol = _this4._getSymbolOrDefault(geo, 'Choose');
+            _this4._copyGeoUpdateSymbol(geo, chooseSymbol);
         });
     };
 
+    CDSP.prototype._clickDecompose = function _clickDecompose(e) {
+        var geos = [];
+        this._chooseLayer.identify(e.coordinate).forEach(function (geo) {
+            if (geo.getId() !== '_hit') geos.push(geo);
+        });
+        if (geos.length > 0) {
+            var geo = geos[0];
+            var coordHit = geo.getCoordinates();
+            var chooseNext = [];
+            this._chooseGeos.forEach(function (geo) {
+                var coord = geo.getCoordinates();
+                if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
+            });
+            this._chooseGeos = chooseNext;
+            geo.remove();
+        } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo);
+        this._updateChooseGeos();
+    };
+
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
+        var deals = [];
         this._chooseGeos.forEach(function (geo) {
-            return geo.remove();
+            deals.push(geo.copy());
+            geo.remove();
         });
         var geos = [];
         this._chooseLayer.getGeometries().forEach(function (geo) {
@@ -2406,7 +2484,8 @@ var CDSP = function (_maptalks$Class) {
                 });else geos.push(geo.copy());
             }
         });
-        callback(this._compositMultiGeo(geos));
+        var result = this._compositMultiGeo(geos);
+        callback(result, deals);
     };
 
     CDSP.prototype._compositMultiGeo = function _compositMultiGeo(geos) {
@@ -2428,6 +2507,30 @@ var CDSP = function (_maptalks$Class) {
         combine.setProperties(properties);
         combine.addTo(this.layer);
         return combine;
+    };
+
+    CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
+        var _this5 = this;
+
+        var geos = [];
+        var deals = [];
+        var geosCoords = [];
+        this._chooseLayer.getGeometries().forEach(function (geo) {
+            if (geo.getId() !== '_hit') {
+                geos.push(geo.copy());
+                geosCoords.push(JSON.stringify(geo.getCoordinates()));
+            }
+        });
+        this._tmpLayer.getGeometries().forEach(function (geo) {
+            var coord = JSON.stringify(geo.getCoordinates());
+            if (!geosCoords.includes(coord)) {
+                geo = geo.copy().addTo(_this5.layer);
+                deals.push(geo);
+            }
+        });
+        this.geometry.remove();
+        var result = this._compositMultiGeo(geos);
+        callback(result, deals);
     };
 
     return CDSP;

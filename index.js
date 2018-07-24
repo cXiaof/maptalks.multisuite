@@ -8,6 +8,7 @@ export class CDSP extends maptalks.Class {
     constructor(options) {
         super(options)
         this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
+        this._layerTMP = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP_TMP`
         this._chooseGeos = []
         this._colorHit = '#ffa400'
         this._colorChoose = '#00bcd4'
@@ -42,7 +43,10 @@ export class CDSP extends maptalks.Class {
             this.geometry = geometry
             this.layer = geometry._layer
             if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
-            console.log(geometry)
+            this._addTo(this.layer.map)
+            geometry._geometries.forEach((geo) => geo.copy().addTo(this._tmpLayer))
+            this._chooseGeos = this._tmpLayer.getGeometries()
+            this._updateChooseGeos()
         }
         return this
     }
@@ -51,6 +55,9 @@ export class CDSP extends maptalks.Class {
         switch (this._task) {
             case 'combine':
                 this._submitCombine(callback)
+                break
+            case 'decompose':
+                this._submitDecompose(callback)
                 break
             default:
                 break
@@ -64,10 +71,11 @@ export class CDSP extends maptalks.Class {
 
     remove() {
         const map = this._map
+        if (this._tmpLayer) this._tmpLayer.remove()
         if (this._chooseLayer) this._chooseLayer.remove()
-        map.config({ doubleClickZoom: this.doubleClickZoom })
         this._offMapEvents()
         delete this._task
+        delete this._tmpLayer
         delete this._chooseLayer
         delete this._mousemove
         delete this._click
@@ -82,10 +90,10 @@ export class CDSP extends maptalks.Class {
 
     _addTo(map) {
         if (this._chooseLayer) this.remove()
-        this.doubleClickZoom = !!map.options.doubleClickZoom
-        map.config({ doubleClickZoom: false })
         this._map = map
+        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map)
         this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
+        this._tmpLayer.bringToFront()
         this._chooseLayer.bringToFront()
         this._registerMapEvents()
         return this
@@ -95,7 +103,7 @@ export class CDSP extends maptalks.Class {
         if (!this._mousemove) {
             const map = this._map
             this._mousemove = (e) => this._mousemoveEvents(e)
-            this._click = () => this._clickEvents()
+            this._click = (e) => this._clickEvents(e)
             map.on('mousemove', this._mousemove, this)
             map.on('click', this._click, this)
         }
@@ -108,6 +116,19 @@ export class CDSP extends maptalks.Class {
     }
 
     _mousemoveEvents(e) {
+        switch (this._task) {
+            case 'combine':
+                this._mousemoveCombine(e)
+                break
+            case 'decompose':
+                this._mousemoveDecompose(e)
+                break
+            default:
+                break
+        }
+    }
+
+    _mousemoveCombine(e) {
         const geos = this.layer.identify(e.coordinate)
         const id = '_hit'
         if (this._needRefreshSymbol) {
@@ -172,7 +193,39 @@ export class CDSP extends maptalks.Class {
         return geo.addTo(layer)
     }
 
-    _clickEvents() {
+    _mousemoveDecompose(e) {
+        const geos = this._tmpLayer.identify(e.coordinate)
+        const id = '_hit'
+        if (this._needRefreshSymbol) {
+            const hitGeoCopy = this._chooseLayer.getGeometryById(id)
+            if (hitGeoCopy) {
+                hitGeoCopy.remove()
+                delete this.hitGeo
+            }
+            this._needRefreshSymbol = false
+        }
+        if (geos.length > 0 && !this._needRefreshSymbol) {
+            this._needRefreshSymbol = true
+            this.hitGeo = geos[0]
+            const hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit')
+            this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id)
+        }
+    }
+
+    _clickEvents(e) {
+        switch (this._task) {
+            case 'combine':
+                this._clickCombine()
+                break
+            case 'decompose':
+                this._clickDecompose(e)
+                break
+            default:
+                break
+        }
+    }
+
+    _clickCombine() {
         if (this.hitGeo) {
             const coordHit = this.hitGeo.getCoordinates()
             const coordThis = this.geometry.getCoordinates()
@@ -197,8 +250,31 @@ export class CDSP extends maptalks.Class {
         })
     }
 
+    _clickDecompose(e) {
+        let geos = []
+        this._chooseLayer.identify(e.coordinate).forEach((geo) => {
+            if (geo.getId() !== '_hit') geos.push(geo)
+        })
+        if (geos.length > 0) {
+            const geo = geos[0]
+            const coordHit = geo.getCoordinates()
+            let chooseNext = []
+            this._chooseGeos.forEach((geo) => {
+                const coord = geo.getCoordinates()
+                if (!isEqual(coordHit, coord)) chooseNext.push(geo)
+            })
+            this._chooseGeos = chooseNext
+            geo.remove()
+        } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo)
+        this._updateChooseGeos()
+    }
+
     _submitCombine(callback) {
-        this._chooseGeos.forEach((geo) => geo.remove())
+        let deals = []
+        this._chooseGeos.forEach((geo) => {
+            deals.push(geo.copy())
+            geo.remove()
+        })
         let geos = []
         this._chooseLayer.getGeometries().forEach((geo) => {
             if (geo.getId() !== '_hit') {
@@ -207,7 +283,8 @@ export class CDSP extends maptalks.Class {
                 else geos.push(geo.copy())
             }
         })
-        callback(this._compositMultiGeo(geos))
+        const result = this._compositMultiGeo(geos)
+        callback(result, deals)
     }
 
     _compositMultiGeo(geos) {
@@ -229,6 +306,28 @@ export class CDSP extends maptalks.Class {
         combine.setProperties(properties)
         combine.addTo(this.layer)
         return combine
+    }
+
+    _submitDecompose(callback) {
+        let geos = []
+        let deals = []
+        let geosCoords = []
+        this._chooseLayer.getGeometries().forEach((geo) => {
+            if (geo.getId() !== '_hit') {
+                geos.push(geo.copy())
+                geosCoords.push(JSON.stringify(geo.getCoordinates()))
+            }
+        })
+        this._tmpLayer.getGeometries().forEach((geo) => {
+            const coord = JSON.stringify(geo.getCoordinates())
+            if (!geosCoords.includes(coord)) {
+                geo = geo.copy().addTo(this.layer)
+                deals.push(geo)
+            }
+        })
+        this.geometry.remove()
+        const result = this._compositMultiGeo(geos)
+        callback(result, deals)
     }
 }
 
