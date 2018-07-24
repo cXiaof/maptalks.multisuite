@@ -2490,13 +2490,13 @@ var CDSP = function (_maptalks$Class) {
                 });else geos.push(geo.copy());
             }
         });
-        var result = this._compositMultiGeo(geos);
+        var result = this._compositResultGeo(geos);
         callback(result, deals);
     };
 
-    CDSP.prototype._compositMultiGeo = function _compositMultiGeo(geos) {
+    CDSP.prototype._compositResultGeo = function _compositResultGeo(geos) {
         var combine = void 0;
-        switch (geos[0].type) {
+        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos);else switch (geos[0].type) {
             case 'Point':
                 combine = new maptalks.MultiPoint(geos);
                 break;
@@ -2535,7 +2535,7 @@ var CDSP = function (_maptalks$Class) {
             }
         });
         this.geometry.remove();
-        var result = this._compositMultiGeo(geos);
+        var result = this._compositResultGeo(geos);
         callback(result, deals);
     };
 

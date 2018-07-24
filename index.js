@@ -283,23 +283,25 @@ export class CDSP extends maptalks.Class {
                 else geos.push(geo.copy())
             }
         })
-        const result = this._compositMultiGeo(geos)
+        const result = this._compositResultGeo(geos)
         callback(result, deals)
     }
 
-    _compositMultiGeo(geos) {
+    _compositResultGeo(geos) {
         let combine
-        switch (geos[0].type) {
-            case 'Point':
-                combine = new maptalks.MultiPoint(geos)
-                break
-            case 'LineString':
-                combine = new maptalks.MultiLineString(geos)
-                break
-            default:
-                combine = new maptalks.MultiPolygon(geos)
-                break
-        }
+        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos)
+        else
+            switch (geos[0].type) {
+                case 'Point':
+                    combine = new maptalks.MultiPoint(geos)
+                    break
+                case 'LineString':
+                    combine = new maptalks.MultiLineString(geos)
+                    break
+                default:
+                    combine = new maptalks.MultiPolygon(geos)
+                    break
+            }
         const symbol = this.geometry.getSymbol()
         const properties = this.geometry.getProperties()
         combine.setSymbol(symbol)
@@ -326,7 +328,7 @@ export class CDSP extends maptalks.Class {
             }
         })
         this.geometry.remove()
-        const result = this._compositMultiGeo(geos)
+        const result = this._compositResultGeo(geos)
         callback(result, deals)
     }
 }

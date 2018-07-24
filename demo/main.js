@@ -12,7 +12,7 @@ const map = new maptalks.Map('map', {
 
 const layerSketch = new maptalks.VectorLayer('sketchPad').addTo(map)
 
-const cdmp = new maptalks.CDSP()
+const cdmp = new maptalks.CDSP({ enableCollection: true })
 
 const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
