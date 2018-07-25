@@ -19,9 +19,19 @@ export class CDSP extends maptalks.Class {
         }
     }
 
-    decompose(geometry) {
+    decompose(geometry, peels) {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialChooseGeos(geometry, 'decompose')
+            return this
+        }
+    }
+
+    peel(geometry, peels) {
+        if (geometry instanceof maptalks.Polygon) {
+            this._task = 'peel'
+            if (peels instanceof maptalks.Polygon) peels = [peels]
+            if (peels.length > 0) this._peelWithTarget(geometry, peels)
+            else this._peelWithOutTarget(geometry)
             return this
         }
     }
@@ -49,6 +59,7 @@ export class CDSP extends maptalks.Class {
         if (this._tmpLayer) this._tmpLayer.remove()
         if (this._chooseLayer) this._chooseLayer.remove()
         this._offMapEvents()
+        delete this._task
         delete this._tmpLayer
         delete this._chooseLayer
         delete this._mousemove
@@ -319,6 +330,20 @@ export class CDSP extends maptalks.Class {
         this.geometry.remove()
         const result = this._compositResultGeo(geos)
         callback(result, deals)
+    }
+
+    _peelWithTarget(geometry, peels) {
+        this._insureSafeTask()
+        let arr = [geometry.getCoordinates()[0]]
+        peels.forEach((item) => {
+            arr.push(item.getCoordinates()[0])
+            item.remove()
+        })
+        new maptalks.MultiPolygon([arr], {
+            symbol: geometry.getSymbol(),
+            properties: geometry.getProperties()
+        }).addTo(geometry._layer)
+        geometry.remove()
     }
 }
 

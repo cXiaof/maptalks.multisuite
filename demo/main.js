@@ -42,6 +42,8 @@ const toolbar = new maptalks.control.Toolbar({
     ]
 }).addTo(map)
 
+let peels = []
+
 const getOptions = (geometry) => {
     return {
         items: [
@@ -58,6 +60,22 @@ const getOptions = (geometry) => {
                 click: () => {
                     console.log('decompose')
                     cdmp.decompose(geometry)
+                }
+            },
+            '-',
+            {
+                item: 'peel',
+                click: () => {
+                    console.log('peel')
+                    cdmp.peel(geometry, peels)
+                }
+            },
+            '-',
+            {
+                item: 'push to peelArr',
+                click: () => {
+                    console.log('push to peelArr')
+                    peels.push(geometry)
                 }
             },
             '-',

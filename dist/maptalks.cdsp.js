@@ -2216,9 +2216,18 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.decompose = function decompose(geometry) {
+    CDSP.prototype.decompose = function decompose(geometry, peels) {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialChooseGeos(geometry, 'decompose');
+            return this;
+        }
+    };
+
+    CDSP.prototype.peel = function peel(geometry, peels) {
+        if (geometry instanceof maptalks.Polygon) {
+            this._task = 'peel';
+            if (peels instanceof maptalks.Polygon) peels = [peels];
+            if (peels.length > 0) this._peelWithTarget(geometry, peels);else this._peelWithOutTarget(geometry);
             return this;
         }
     };
@@ -2250,6 +2259,7 @@ var CDSP = function (_maptalks$Class) {
         if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
         this._offMapEvents();
+        delete this._task;
         delete this._tmpLayer;
         delete this._chooseLayer;
         delete this._mousemove;
@@ -2531,6 +2541,20 @@ var CDSP = function (_maptalks$Class) {
         this.geometry.remove();
         var result = this._compositResultGeo(geos);
         callback(result, deals);
+    };
+
+    CDSP.prototype._peelWithTarget = function _peelWithTarget(geometry, peels) {
+        this._insureSafeTask();
+        var arr = [geometry.getCoordinates()[0]];
+        peels.forEach(function (item) {
+            arr.push(item.getCoordinates()[0]);
+            item.remove();
+        });
+        new maptalks.MultiPolygon([arr], {
+            symbol: geometry.getSymbol(),
+            properties: geometry.getProperties()
+        }).addTo(geometry._layer);
+        geometry.remove();
     };
 
     return CDSP;
