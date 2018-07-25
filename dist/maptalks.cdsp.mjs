@@ -2185,9 +2185,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : _defaults(subClass, superClass); }
 
-var options = {
-    enableCollection: false
-};
+var options = {};
 
 var CDSP = function (_maptalks$Class) {
     _inherits(CDSP, _maptalks$Class);
@@ -2202,48 +2200,21 @@ var CDSP = function (_maptalks$Class) {
         _this._chooseGeos = [];
         _this._colorHit = '#ffa400';
         _this._colorChoose = '#00bcd4';
-        _this._updateSameType();
         return _this;
     }
 
-    CDSP.prototype.enableCollection = function enableCollection(need) {
-        this._updateSameType(need);
-        return this;
-    };
-
     CDSP.prototype.combine = function combine(geometry) {
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
         if (geometry instanceof maptalks.Geometry) {
-            if (this.geometry) this.remove();
-            this._task = 'combine';
-            this.geometry = geometry;
-            this.layer = geometry._layer;
-            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
-            this._addTo(this.layer.map);
-            this._chooseGeos = [geometry];
-            this._updateChooseGeos();
+            this._initialChooseGeos(geometry, 'combine');
+            return this;
         }
-        return this;
     };
 
     CDSP.prototype.decompose = function decompose(geometry) {
-        var _this2 = this;
-
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
         if (geometry instanceof maptalks.GeometryCollection) {
-            if (this.geometry) this.remove();
-            this._task = 'decompose';
-            this.geometry = geometry;
-            this.layer = geometry._layer;
-            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
-            this._addTo(this.layer.map);
-            geometry._geometries.forEach(function (geo) {
-                return geo.copy().addTo(_this2._tmpLayer);
-            });
-            this._chooseGeos = this._tmpLayer.getGeometries();
-            this._updateChooseGeos();
+            this._initialChooseGeos(geometry, 'decompose');
+            return this;
         }
-        return this;
     };
 
     CDSP.prototype.submit = function submit() {
@@ -2273,7 +2244,6 @@ var CDSP = function (_maptalks$Class) {
         if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
         this._offMapEvents();
-        delete this._task;
         delete this._tmpLayer;
         delete this._chooseLayer;
         delete this._mousemove;
@@ -2281,19 +2251,47 @@ var CDSP = function (_maptalks$Class) {
         delete this._dblclick;
     };
 
-    CDSP.prototype._updateSameType = function _updateSameType(need) {
-        need = need !== undefined ? need : this.options['enableCollection'];
-        need = need !== undefined ? need : options.enableCollection;
-        this._enableCollection = need;
+    CDSP.prototype._initialChooseGeos = function _initialChooseGeos(geometry, task) {
+        var _this2 = this;
+
+        this._insureSafeTask();
+
+        this._task = task;
+        this._savePrivateGeometry(geometry);
+
+        switch (this._task) {
+            case 'combine':
+                this._chooseGeos = [geometry];
+                break;
+            case 'decompose':
+                geometry._geometries.forEach(function (geo) {
+                    return geo.copy().addTo(_this2._tmpLayer);
+                });
+                this._chooseGeos = this._tmpLayer.getGeometries();
+                break;
+            default:
+                break;
+        }
+        this._updateChooseGeos();
+    };
+
+    CDSP.prototype._insureSafeTask = function _insureSafeTask() {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
+        if (this.geometry) this.remove();
+    };
+
+    CDSP.prototype._savePrivateGeometry = function _savePrivateGeometry(geometry) {
+        this.geometry = geometry;
+        this.layer = geometry._layer;
+        if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
+        this._addTo(this.layer.map);
     };
 
     CDSP.prototype._addTo = function _addTo(map) {
         if (this._chooseLayer) this.remove();
         this._map = map;
-        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map);
-        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map);
-        this._tmpLayer.bringToFront();
-        this._chooseLayer.bringToFront();
+        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map).bringToFront();
+        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map).bringToFront();
         this._registerMapEvents();
         return this;
     };
@@ -2355,7 +2353,6 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._checkIsSameType = function _checkIsSameType(geo) {
-        if (this._enableCollection) return true;
         var typeHit = geo.type;
         var typeThis = this.geometry.type;
         return typeHit.includes(typeThis) || typeThis.includes(typeHit);
@@ -2388,9 +2385,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
-        var layer = this._chooseLayer;
-        geo = geo.copy().updateSymbol(symbol);
-        return geo.addTo(layer);
+        return geo.copy().updateSymbol(symbol).addTo(this._chooseLayer);
     };
 
     CDSP.prototype._mousemoveDecompose = function _mousemoveDecompose(e) {
@@ -2496,21 +2491,19 @@ var CDSP = function (_maptalks$Class) {
 
         if (!length || length === 0) return null;
         var combine = void 0;
-        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos);else {
-            switch (geos[0].type) {
-                case 'Point':
-                    combine = new maptalks.MultiPoint(geos);
-                    break;
-                case 'LineString':
-                    combine = new maptalks.MultiLineString(geos);
-                    break;
-                default:
-                    combine = new maptalks.MultiPolygon(geos);
-                    break;
-            }
-            combine.setSymbol(this.geometry.getSymbol());
-            combine.setProperties(this.geometry.getProperties());
+        switch (geos[0].type) {
+            case 'Point':
+                combine = new maptalks.MultiPoint(geos);
+                break;
+            case 'LineString':
+                combine = new maptalks.MultiLineString(geos);
+                break;
+            default:
+                combine = new maptalks.MultiPolygon(geos);
+                break;
         }
+        combine.setSymbol(this.geometry.getSymbol());
+        combine.setProperties(this.geometry.getProperties());
         combine.addTo(this.layer);
         return combine;
     };

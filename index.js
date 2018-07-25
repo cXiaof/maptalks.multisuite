@@ -1,8 +1,6 @@
 import isEqual from 'lodash/isEqual'
 
-const options = {
-    enableCollection: false
-}
+const options = {}
 
 export class CDSP extends maptalks.Class {
     constructor(options) {
@@ -12,43 +10,20 @@ export class CDSP extends maptalks.Class {
         this._chooseGeos = []
         this._colorHit = '#ffa400'
         this._colorChoose = '#00bcd4'
-        this._updateSameType()
-    }
-
-    enableCollection(need) {
-        this._updateSameType(need)
-        return this
     }
 
     combine(geometry) {
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
         if (geometry instanceof maptalks.Geometry) {
-            if (this.geometry) this.remove()
-            this._task = 'combine'
-            this.geometry = geometry
-            this.layer = geometry._layer
-            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
-            this._addTo(this.layer.map)
-            this._chooseGeos = [geometry]
-            this._updateChooseGeos()
+            this._initialChooseGeos(geometry, 'combine')
+            return this
         }
-        return this
     }
 
     decompose(geometry) {
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
         if (geometry instanceof maptalks.GeometryCollection) {
-            if (this.geometry) this.remove()
-            this._task = 'decompose'
-            this.geometry = geometry
-            this.layer = geometry._layer
-            if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
-            this._addTo(this.layer.map)
-            geometry._geometries.forEach((geo) => geo.copy().addTo(this._tmpLayer))
-            this._chooseGeos = this._tmpLayer.getGeometries()
-            this._updateChooseGeos()
+            this._initialChooseGeos(geometry, 'decompose')
+            return this
         }
-        return this
     }
 
     submit(callback = () => false) {
@@ -74,7 +49,6 @@ export class CDSP extends maptalks.Class {
         if (this._tmpLayer) this._tmpLayer.remove()
         if (this._chooseLayer) this._chooseLayer.remove()
         this._offMapEvents()
-        delete this._task
         delete this._tmpLayer
         delete this._chooseLayer
         delete this._mousemove
@@ -82,19 +56,43 @@ export class CDSP extends maptalks.Class {
         delete this._dblclick
     }
 
-    _updateSameType(need) {
-        need = need !== undefined ? need : this.options['enableCollection']
-        need = need !== undefined ? need : options.enableCollection
-        this._enableCollection = need
+    _initialChooseGeos(geometry, task) {
+        this._insureSafeTask()
+
+        this._task = task
+        this._savePrivateGeometry(geometry)
+
+        switch (this._task) {
+            case 'combine':
+                this._chooseGeos = [geometry]
+                break
+            case 'decompose':
+                geometry._geometries.forEach((geo) => geo.copy().addTo(this._tmpLayer))
+                this._chooseGeos = this._tmpLayer.getGeometries()
+                break
+            default:
+                break
+        }
+        this._updateChooseGeos()
+    }
+
+    _insureSafeTask() {
+        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
+        if (this.geometry) this.remove()
+    }
+
+    _savePrivateGeometry(geometry) {
+        this.geometry = geometry
+        this.layer = geometry._layer
+        if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer
+        this._addTo(this.layer.map)
     }
 
     _addTo(map) {
         if (this._chooseLayer) this.remove()
         this._map = map
-        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map)
-        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map)
-        this._tmpLayer.bringToFront()
-        this._chooseLayer.bringToFront()
+        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map).bringToFront()
+        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map).bringToFront()
         this._registerMapEvents()
         return this
     }
@@ -150,7 +148,6 @@ export class CDSP extends maptalks.Class {
     }
 
     _checkIsSameType(geo) {
-        if (this._enableCollection) return true
         const typeHit = geo.type
         const typeThis = this.geometry.type
         return typeHit.includes(typeThis) || typeThis.includes(typeHit)
@@ -188,9 +185,10 @@ export class CDSP extends maptalks.Class {
     }
 
     _copyGeoUpdateSymbol(geo, symbol) {
-        const layer = this._chooseLayer
-        geo = geo.copy().updateSymbol(symbol)
-        return geo.addTo(layer)
+        return geo
+            .copy()
+            .updateSymbol(symbol)
+            .addTo(this._chooseLayer)
     }
 
     _mousemoveDecompose(e) {
@@ -294,22 +292,19 @@ export class CDSP extends maptalks.Class {
         const { length } = geos
         if (!length || length === 0) return null
         let combine
-        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos)
-        else {
-            switch (geos[0].type) {
-                case 'Point':
-                    combine = new maptalks.MultiPoint(geos)
-                    break
-                case 'LineString':
-                    combine = new maptalks.MultiLineString(geos)
-                    break
-                default:
-                    combine = new maptalks.MultiPolygon(geos)
-                    break
-            }
-            combine.setSymbol(this.geometry.getSymbol())
-            combine.setProperties(this.geometry.getProperties())
+        switch (geos[0].type) {
+            case 'Point':
+                combine = new maptalks.MultiPoint(geos)
+                break
+            case 'LineString':
+                combine = new maptalks.MultiLineString(geos)
+                break
+            default:
+                combine = new maptalks.MultiPolygon(geos)
+                break
         }
+        combine.setSymbol(this.geometry.getSymbol())
+        combine.setProperties(this.geometry.getProperties())
         combine.addTo(this.layer)
         return combine
     }

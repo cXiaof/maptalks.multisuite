@@ -12,7 +12,7 @@ const map = new maptalks.Map('map', {
 
 const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 
-const cdmp = new maptalks.CDSP({ enableCollection: false })
+const cdmp = new maptalks.CDSP()
 
 const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
@@ -48,37 +48,38 @@ const getOptions = (geometry) => {
             {
                 item: 'combine',
                 click: () => {
-                    cdmp.combine(geometry)
                     console.log('combine')
+                    cdmp.combine(geometry)
                 }
             },
             '-',
             {
                 item: 'decompose',
                 click: () => {
-                    cdmp.decompose(geometry)
                     console.log('decompose')
+                    cdmp.decompose(geometry)
                 }
             },
             '-',
             {
                 item: 'submit',
                 click: () => {
-                    cdmp.submit((result, deals) =>
+                    console.log('submit')
+                    cdmp.submit((result, deals) => {
                         layer
                             .getGeometries()
                             .forEach((geo) =>
                                 geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
                             )
-                    )
+                    })
                 }
             },
             '-',
             {
                 item: 'cancel',
                 click: () => {
-                    cdmp.cancel()
                     console.log('cancel')
+                    cdmp.cancel()
                 }
             }
         ]
