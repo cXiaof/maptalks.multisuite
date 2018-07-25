@@ -77,7 +77,7 @@ export class CDSP extends maptalks.Class {
     }
 
     _insureSafeTask() {
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable')
+        if (map._map_tool && drawTool instanceof maptalks.DrawTool) drawTool.disable()
         if (this.geometry) this.remove()
     }
 
@@ -114,20 +114,21 @@ export class CDSP extends maptalks.Class {
     }
 
     _mousemoveEvents(e) {
+        let geos
         switch (this._task) {
             case 'combine':
-                this._mousemoveCombine(e)
+                geos = this.layer.identify(e.coordinate)
                 break
             case 'decompose':
-                this._mousemoveDecompose(e)
+                geos = this._tmpLayer.identify(e.coordinate)
                 break
             default:
                 break
         }
+        this._updateHitGeo(geos)
     }
 
-    _mousemoveCombine(e) {
-        const geos = this.layer.identify(e.coordinate)
+    _updateHitGeo(geos) {
         const id = '_hit'
         if (this._needRefreshSymbol) {
             const hitGeoCopy = this._chooseLayer.getGeometryById(id)
@@ -137,7 +138,7 @@ export class CDSP extends maptalks.Class {
             }
             this._needRefreshSymbol = false
         }
-        if (geos.length > 0 && !this._needRefreshSymbol) {
+        if (geos && geos.length > 0 && !this._needRefreshSymbol) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
             if (this._checkIsSameType(this.hitGeo)) {
@@ -191,25 +192,6 @@ export class CDSP extends maptalks.Class {
             .addTo(this._chooseLayer)
     }
 
-    _mousemoveDecompose(e) {
-        const geos = this._tmpLayer.identify(e.coordinate)
-        const id = '_hit'
-        if (this._needRefreshSymbol) {
-            const hitGeoCopy = this._chooseLayer.getGeometryById(id)
-            if (hitGeoCopy) {
-                hitGeoCopy.remove()
-                delete this.hitGeo
-            }
-            this._needRefreshSymbol = false
-        }
-        if (geos.length > 0 && !this._needRefreshSymbol) {
-            this._needRefreshSymbol = true
-            this.hitGeo = geos[0]
-            const hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit')
-            this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id)
-        }
-    }
-
     _clickEvents(e) {
         switch (this._task) {
             case 'combine':
@@ -228,15 +210,20 @@ export class CDSP extends maptalks.Class {
             const coordHit = this.hitGeo.getCoordinates()
             const coordThis = this.geometry.getCoordinates()
             if (isEqual(coordHit, coordThis)) return null
-            let chooseNext = []
-            this._chooseGeos.forEach((geo) => {
-                const coord = geo.getCoordinates()
-                if (!isEqual(coordHit, coord)) chooseNext.push(geo)
-            })
+            const chooseNext = this._getChooseGeosExceptHit(coordHit)
             if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo)
             else this._chooseGeos = chooseNext
             this._updateChooseGeos()
         }
+    }
+
+    _getChooseGeosExceptHit(coordHit) {
+        let chooseNext = []
+        this._chooseGeos.forEach((geo) => {
+            const coord = geo.getCoordinates()
+            if (!isEqual(coordHit, coord)) chooseNext.push(geo)
+        })
+        return chooseNext
     }
 
     _updateChooseGeos() {
@@ -256,11 +243,7 @@ export class CDSP extends maptalks.Class {
         if (geos.length > 0) {
             const geo = geos[0]
             const coordHit = geo.getCoordinates()
-            let chooseNext = []
-            this._chooseGeos.forEach((geo) => {
-                const coord = geo.getCoordinates()
-                if (!isEqual(coordHit, coord)) chooseNext.push(geo)
-            })
+            const chooseNext = this._getChooseGeosExceptHit(coordHit)
             this._chooseGeos = chooseNext
             geo.remove()
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo)
@@ -269,14 +252,13 @@ export class CDSP extends maptalks.Class {
 
     _submitCombine(callback) {
         let deals = []
-        let geosCoords = []
-        this._chooseGeos.forEach((geo) => {
-            deals.push(geo.copy())
-            geosCoords.push(JSON.stringify(geo.getCoordinates()))
-        })
+        this._chooseGeos.forEach((geo) => deals.push(geo.copy()))
+
+        let geosCoords = this._getGeoStringifyCoords(this._chooseGeos)
+
         let geos = []
         this.layer.getGeometries().forEach((geo) => {
-            const coord = JSON.stringify(geo.getCoordinates())
+            const coord = this._getGeoStringifyCoords(geo)
             if (geosCoords.includes(coord)) {
                 if (geo.type.startsWith('Multi'))
                     geo._geometries.forEach((item) => geos.push(item.copy()))
@@ -286,6 +268,15 @@ export class CDSP extends maptalks.Class {
         })
         const result = this._compositResultGeo(geos)
         callback(result, deals)
+    }
+
+    _getGeoStringifyCoords(geo) {
+        if (geo instanceof Array) {
+            let arr = []
+            geo.forEach((item) => arr.push(JSON.stringify(item.getCoordinates())))
+            return arr
+        }
+        return JSON.stringify(geo.getCoordinates())
     }
 
     _compositResultGeo(geos) {
@@ -312,12 +303,13 @@ export class CDSP extends maptalks.Class {
     _submitDecompose(callback) {
         let geosCoords = []
         this._chooseLayer.getGeometries().forEach((geo) => {
-            if (geo.getId() !== '_hit') geosCoords.push(JSON.stringify(geo.getCoordinates()))
+            if (geo.getId() !== '_hit') geosCoords.push(this._getGeoStringifyCoords(geo))
         })
+
         let geos = []
         let deals = []
         this._tmpLayer.getGeometries().forEach((geo) => {
-            const coord = JSON.stringify(geo.getCoordinates())
+            const coord = this._getGeoStringifyCoords(geo)
             if (geosCoords.includes(coord)) geos.push(geo.copy())
             else {
                 geo = geo.copy().addTo(this.layer)

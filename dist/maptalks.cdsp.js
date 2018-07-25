@@ -2282,7 +2282,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._insureSafeTask = function _insureSafeTask() {
-        if (map._map_tool && map._map_tool.isEnabled()) throw new Error('drawTool still enable');
+        if (map._map_tool && drawTool instanceof maptalks.DrawTool) drawTool.disable();
         if (this.geometry) this.remove();
     };
 
@@ -2325,20 +2325,21 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
+        var geos = void 0;
         switch (this._task) {
             case 'combine':
-                this._mousemoveCombine(e);
+                geos = this.layer.identify(e.coordinate);
                 break;
             case 'decompose':
-                this._mousemoveDecompose(e);
+                geos = this._tmpLayer.identify(e.coordinate);
                 break;
             default:
                 break;
         }
+        this._updateHitGeo(geos);
     };
 
-    CDSP.prototype._mousemoveCombine = function _mousemoveCombine(e) {
-        var geos = this.layer.identify(e.coordinate);
+    CDSP.prototype._updateHitGeo = function _updateHitGeo(geos) {
         var id = '_hit';
         if (this._needRefreshSymbol) {
             var hitGeoCopy = this._chooseLayer.getGeometryById(id);
@@ -2348,7 +2349,7 @@ var CDSP = function (_maptalks$Class) {
             }
             this._needRefreshSymbol = false;
         }
-        if (geos.length > 0 && !this._needRefreshSymbol) {
+        if (geos && geos.length > 0 && !this._needRefreshSymbol) {
             this._needRefreshSymbol = true;
             this.hitGeo = geos[0];
             if (this._checkIsSameType(this.hitGeo)) {
@@ -2394,25 +2395,6 @@ var CDSP = function (_maptalks$Class) {
         return geo.copy().updateSymbol(symbol).addTo(this._chooseLayer);
     };
 
-    CDSP.prototype._mousemoveDecompose = function _mousemoveDecompose(e) {
-        var geos = this._tmpLayer.identify(e.coordinate);
-        var id = '_hit';
-        if (this._needRefreshSymbol) {
-            var hitGeoCopy = this._chooseLayer.getGeometryById(id);
-            if (hitGeoCopy) {
-                hitGeoCopy.remove();
-                delete this.hitGeo;
-            }
-            this._needRefreshSymbol = false;
-        }
-        if (geos.length > 0 && !this._needRefreshSymbol) {
-            this._needRefreshSymbol = true;
-            this.hitGeo = geos[0];
-            var hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit');
-            this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id);
-        }
-    };
-
     CDSP.prototype._clickEvents = function _clickEvents(e) {
         switch (this._task) {
             case 'combine':
@@ -2431,14 +2413,19 @@ var CDSP = function (_maptalks$Class) {
             var coordHit = this.hitGeo.getCoordinates();
             var coordThis = this.geometry.getCoordinates();
             if (isEqual_1(coordHit, coordThis)) return null;
-            var chooseNext = [];
-            this._chooseGeos.forEach(function (geo) {
-                var coord = geo.getCoordinates();
-                if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
-            });
+            var chooseNext = this._getChooseGeosExceptHit(coordHit);
             if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
             this._updateChooseGeos();
         }
+    };
+
+    CDSP.prototype._getChooseGeosExceptHit = function _getChooseGeosExceptHit(coordHit) {
+        var chooseNext = [];
+        this._chooseGeos.forEach(function (geo) {
+            var coord = geo.getCoordinates();
+            if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
+        });
+        return chooseNext;
     };
 
     CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
@@ -2460,11 +2447,7 @@ var CDSP = function (_maptalks$Class) {
         if (geos.length > 0) {
             var geo = geos[0];
             var coordHit = geo.getCoordinates();
-            var chooseNext = [];
-            this._chooseGeos.forEach(function (geo) {
-                var coord = geo.getCoordinates();
-                if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
-            });
+            var chooseNext = this._getChooseGeosExceptHit(coordHit);
             this._chooseGeos = chooseNext;
             geo.remove();
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo);
@@ -2472,15 +2455,18 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
+        var _this5 = this;
+
         var deals = [];
-        var geosCoords = [];
         this._chooseGeos.forEach(function (geo) {
-            deals.push(geo.copy());
-            geosCoords.push(JSON.stringify(geo.getCoordinates()));
+            return deals.push(geo.copy());
         });
+
+        var geosCoords = this._getGeoStringifyCoords(this._chooseGeos);
+
         var geos = [];
         this.layer.getGeometries().forEach(function (geo) {
-            var coord = JSON.stringify(geo.getCoordinates());
+            var coord = _this5._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) {
                 if (geo.type.startsWith('Multi')) geo._geometries.forEach(function (item) {
                     return geos.push(item.copy());
@@ -2490,6 +2476,17 @@ var CDSP = function (_maptalks$Class) {
         });
         var result = this._compositResultGeo(geos);
         callback(result, deals);
+    };
+
+    CDSP.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
+        if (geo instanceof Array) {
+            var arr = [];
+            geo.forEach(function (item) {
+                return arr.push(JSON.stringify(item.getCoordinates()));
+            });
+            return arr;
+        }
+        return JSON.stringify(geo.getCoordinates());
     };
 
     CDSP.prototype._compositResultGeo = function _compositResultGeo(geos) {
@@ -2515,18 +2512,19 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
-        var _this5 = this;
+        var _this6 = this;
 
         var geosCoords = [];
         this._chooseLayer.getGeometries().forEach(function (geo) {
-            if (geo.getId() !== '_hit') geosCoords.push(JSON.stringify(geo.getCoordinates()));
+            if (geo.getId() !== '_hit') geosCoords.push(_this6._getGeoStringifyCoords(geo));
         });
+
         var geos = [];
         var deals = [];
         this._tmpLayer.getGeometries().forEach(function (geo) {
-            var coord = JSON.stringify(geo.getCoordinates());
+            var coord = _this6._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) geos.push(geo.copy());else {
-                geo = geo.copy().addTo(_this5.layer);
+                geo = geo.copy().addTo(_this6.layer);
                 deals.push(geo);
             }
         });
