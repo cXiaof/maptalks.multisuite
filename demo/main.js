@@ -89,6 +89,7 @@ const getOptions = (geometry) => {
                             .forEach((geo) =>
                                 geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
                             )
+                        console.log(result, deals)
                     })
                 }
             },

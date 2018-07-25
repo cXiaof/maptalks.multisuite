@@ -28,6 +28,7 @@ export class CDSP extends maptalks.Class {
 
     peel(geometry, peels) {
         if (geometry instanceof maptalks.Polygon) {
+            this._insureSafeTask()
             this._task = 'peel'
             if (peels instanceof maptalks.Polygon) peels = [peels]
             if (peels.length > 0) this._peelWithTarget(geometry, peels)
@@ -43,6 +44,9 @@ export class CDSP extends maptalks.Class {
                 break
             case 'decompose':
                 this._submitDecompose(callback)
+                break
+            case 'peel':
+                this._submitPeel(callback)
                 break
             default:
                 break
@@ -119,19 +123,28 @@ export class CDSP extends maptalks.Class {
     }
 
     _offMapEvents() {
-        const map = this._map
-        map.off('mousemove', this._mousemove, this)
-        map.off('click', this._click, this)
+        if (this._mousemove) {
+            const map = this._map
+            map.off('mousemove', this._mousemove, this)
+            map.off('click', this._click, this)
+        }
     }
 
     _mousemoveEvents(e) {
-        let geos
+        let geos = []
         switch (this._task) {
             case 'combine':
                 geos = this.layer.identify(e.coordinate)
                 break
             case 'decompose':
                 geos = this._tmpLayer.identify(e.coordinate)
+                break
+            case 'peel':
+                const coordThis = this.geometry.getCoordinates()
+                this.layer.identify(e.coordinate).forEach((geo) => {
+                    const coord = geo.getCoordinates()
+                    if (!isEqual(coord, coordThis)) geos.push(geo)
+                })
                 break
             default:
                 break
@@ -211,6 +224,9 @@ export class CDSP extends maptalks.Class {
             case 'decompose':
                 this._clickDecompose(e)
                 break
+            case 'peel':
+                this._clickPeel()
+                break
             default:
                 break
         }
@@ -221,20 +237,20 @@ export class CDSP extends maptalks.Class {
             const coordHit = this.hitGeo.getCoordinates()
             const coordThis = this.geometry.getCoordinates()
             if (isEqual(coordHit, coordThis)) return null
-            const chooseNext = this._getChooseGeosExceptHit(coordHit)
-            if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo)
-            else this._chooseGeos = chooseNext
+            this._setChooseGeosExceptHit(coordHit)
             this._updateChooseGeos()
         }
     }
 
-    _getChooseGeosExceptHit(coordHit) {
+    _setChooseGeosExceptHit(coordHit, hasTmp) {
         let chooseNext = []
         this._chooseGeos.forEach((geo) => {
             const coord = geo.getCoordinates()
             if (!isEqual(coordHit, coord)) chooseNext.push(geo)
         })
-        return chooseNext
+        if (!hasTmp || chooseNext.length === this._chooseGeos.length)
+            this._chooseGeos.push(this.hitGeo)
+        else this._chooseGeos = chooseNext
     }
 
     _updateChooseGeos() {
@@ -254,8 +270,7 @@ export class CDSP extends maptalks.Class {
         if (geos.length > 0) {
             const geo = geos[0]
             const coordHit = geo.getCoordinates()
-            const chooseNext = this._getChooseGeosExceptHit(coordHit)
-            this._chooseGeos = chooseNext
+            this._setChooseGeosExceptHit(coordHit, true)
             geo.remove()
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo)
         this._updateChooseGeos()
@@ -333,17 +348,35 @@ export class CDSP extends maptalks.Class {
     }
 
     _peelWithTarget(geometry, peels) {
-        this._insureSafeTask()
         let arr = [geometry.getCoordinates()[0]]
-        peels.forEach((item) => {
-            arr.push(item.getCoordinates()[0])
-            item.remove()
+        peels.forEach((geo) => {
+            if (geo instanceof maptalks.MultiPolygon)
+                geo._geometries.forEach((item) => arr.push(item.getCoordinates()[0]))
+            else arr.push(geo.getCoordinates()[0])
+            geo.remove()
         })
         new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer)
         geometry.remove()
+        this.remove()
+    }
+
+    _peelWithOutTarget(geometry) {
+        this._savePrivateGeometry(geometry)
+    }
+
+    _clickPeel() {
+        if (this.hitGeo) {
+            const coordHit = this.hitGeo.getCoordinates()
+            this._setChooseGeosExceptHit(coordHit)
+            this._updateChooseGeos()
+        }
+    }
+
+    _submitPeel() {
+        this._peelWithTarget(this.geometry, this._chooseGeos)
     }
 }
 

@@ -2225,6 +2225,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.peel = function peel(geometry, peels) {
         if (geometry instanceof maptalks.Polygon) {
+            this._insureSafeTask();
             this._task = 'peel';
             if (peels instanceof maptalks.Polygon) peels = [peels];
             if (peels.length > 0) this._peelWithTarget(geometry, peels);else this._peelWithOutTarget(geometry);
@@ -2243,6 +2244,9 @@ var CDSP = function (_maptalks$Class) {
                 break;
             case 'decompose':
                 this._submitDecompose(callback);
+                break;
+            case 'peel':
+                this._submitPeel(callback);
                 break;
             default:
                 break;
@@ -2329,19 +2333,28 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._offMapEvents = function _offMapEvents() {
-        var map = this._map;
-        map.off('mousemove', this._mousemove, this);
-        map.off('click', this._click, this);
+        if (this._mousemove) {
+            var _map2 = this._map;
+            _map2.off('mousemove', this._mousemove, this);
+            _map2.off('click', this._click, this);
+        }
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var geos = void 0;
+        var geos = [];
         switch (this._task) {
             case 'combine':
                 geos = this.layer.identify(e.coordinate);
                 break;
             case 'decompose':
                 geos = this._tmpLayer.identify(e.coordinate);
+                break;
+            case 'peel':
+                var coordThis = this.geometry.getCoordinates();
+                this.layer.identify(e.coordinate).forEach(function (geo) {
+                    var coord = geo.getCoordinates();
+                    if (!isEqual_1(coord, coordThis)) geos.push(geo);
+                });
                 break;
             default:
                 break;
@@ -2413,6 +2426,9 @@ var CDSP = function (_maptalks$Class) {
             case 'decompose':
                 this._clickDecompose(e);
                 break;
+            case 'peel':
+                this._clickPeel();
+                break;
             default:
                 break;
         }
@@ -2423,19 +2439,18 @@ var CDSP = function (_maptalks$Class) {
             var coordHit = this.hitGeo.getCoordinates();
             var coordThis = this.geometry.getCoordinates();
             if (isEqual_1(coordHit, coordThis)) return null;
-            var chooseNext = this._getChooseGeosExceptHit(coordHit);
-            if (chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
+            this._setChooseGeosExceptHit(coordHit);
             this._updateChooseGeos();
         }
     };
 
-    CDSP.prototype._getChooseGeosExceptHit = function _getChooseGeosExceptHit(coordHit) {
+    CDSP.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit, hasTmp) {
         var chooseNext = [];
         this._chooseGeos.forEach(function (geo) {
             var coord = geo.getCoordinates();
             if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
         });
-        return chooseNext;
+        if (!hasTmp || chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
     };
 
     CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
@@ -2457,8 +2472,7 @@ var CDSP = function (_maptalks$Class) {
         if (geos.length > 0) {
             var geo = geos[0];
             var coordHit = geo.getCoordinates();
-            var chooseNext = this._getChooseGeosExceptHit(coordHit);
-            this._chooseGeos = chooseNext;
+            this._setChooseGeosExceptHit(coordHit, true);
             geo.remove();
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo);
         this._updateChooseGeos();
@@ -2544,17 +2558,35 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._peelWithTarget = function _peelWithTarget(geometry, peels) {
-        this._insureSafeTask();
         var arr = [geometry.getCoordinates()[0]];
-        peels.forEach(function (item) {
-            arr.push(item.getCoordinates()[0]);
-            item.remove();
+        peels.forEach(function (geo) {
+            if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
+                return arr.push(item.getCoordinates()[0]);
+            });else arr.push(geo.getCoordinates()[0]);
+            geo.remove();
         });
         new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer);
         geometry.remove();
+        this.remove();
+    };
+
+    CDSP.prototype._peelWithOutTarget = function _peelWithOutTarget(geometry) {
+        this._savePrivateGeometry(geometry);
+    };
+
+    CDSP.prototype._clickPeel = function _clickPeel() {
+        if (this.hitGeo) {
+            var coordHit = this.hitGeo.getCoordinates();
+            this._setChooseGeosExceptHit(coordHit);
+            this._updateChooseGeos();
+        }
+    };
+
+    CDSP.prototype._submitPeel = function _submitPeel() {
+        this._peelWithTarget(this.geometry, this._chooseGeos);
     };
 
     return CDSP;
