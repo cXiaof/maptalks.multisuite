@@ -271,16 +271,19 @@ export class CDSP extends maptalks.Class {
 
     _submitCombine(callback) {
         let deals = []
+        let geosCoords = []
         this._chooseGeos.forEach((geo) => {
             deals.push(geo.copy())
-            geo.remove()
+            geosCoords.push(JSON.stringify(geo.getCoordinates()))
         })
         let geos = []
-        this._chooseLayer.getGeometries().forEach((geo) => {
-            if (geo.getId() !== '_hit') {
+        this.layer.getGeometries().forEach((geo) => {
+            const coord = JSON.stringify(geo.getCoordinates())
+            if (geosCoords.includes(coord)) {
                 if (geo.type.startsWith('Multi'))
                     geo._geometries.forEach((item) => geos.push(item.copy()))
                 else geos.push(geo.copy())
+                geo.remove()
             }
         })
         const result = this._compositResultGeo(geos)
@@ -288,9 +291,11 @@ export class CDSP extends maptalks.Class {
     }
 
     _compositResultGeo(geos) {
+        const { length } = geos
+        if (!length || length === 0) return null
         let combine
         if (this._enableCollection) combine = new maptalks.GeometryCollection(geos)
-        else
+        else {
             switch (geos[0].type) {
                 case 'Point':
                     combine = new maptalks.MultiPoint(geos)
@@ -302,27 +307,24 @@ export class CDSP extends maptalks.Class {
                     combine = new maptalks.MultiPolygon(geos)
                     break
             }
-        const symbol = this.geometry.getSymbol()
-        const properties = this.geometry.getProperties()
-        combine.setSymbol(symbol)
-        combine.setProperties(properties)
+            combine.setSymbol(this.geometry.getSymbol())
+            combine.setProperties(this.geometry.getProperties())
+        }
         combine.addTo(this.layer)
         return combine
     }
 
     _submitDecompose(callback) {
-        let geos = []
-        let deals = []
         let geosCoords = []
         this._chooseLayer.getGeometries().forEach((geo) => {
-            if (geo.getId() !== '_hit') {
-                geos.push(geo.copy())
-                geosCoords.push(JSON.stringify(geo.getCoordinates()))
-            }
+            if (geo.getId() !== '_hit') geosCoords.push(JSON.stringify(geo.getCoordinates()))
         })
+        let geos = []
+        let deals = []
         this._tmpLayer.getGeometries().forEach((geo) => {
             const coord = JSON.stringify(geo.getCoordinates())
-            if (!geosCoords.includes(coord)) {
+            if (geosCoords.includes(coord)) geos.push(geo.copy())
+            else {
                 geo = geo.copy().addTo(this.layer)
                 deals.push(geo)
             }

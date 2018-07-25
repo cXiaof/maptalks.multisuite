@@ -10,14 +10,14 @@ const map = new maptalks.Map('map', {
     })
 })
 
-const layerSketch = new maptalks.VectorLayer('sketchPad').addTo(map)
+const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 
-const cdmp = new maptalks.CDSP({ enableCollection: true })
+const cdmp = new maptalks.CDSP({ enableCollection: false })
 
 const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
     const { geometry } = param
-    geometry.addTo(layerSketch)
+    geometry.addTo(layer)
     geometry.on('contextmenu', () => geometry.setMenu(getOptions(geometry)).openMenu())
 })
 
@@ -37,7 +37,7 @@ const toolbar = new maptalks.control.Toolbar({
         },
         {
             item: 'Clear',
-            click: () => layerSketch.clear()
+            click: () => layer.clear()
         }
     ]
 }).addTo(map)
@@ -64,11 +64,13 @@ const getOptions = (geometry) => {
             {
                 item: 'submit',
                 click: () => {
-                    cdmp.submit((result, deals) => {
-                        const geo = result
-                        geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
-                        console.log(deals)
-                    })
+                    cdmp.submit((result, deals) =>
+                        layer
+                            .getGeometries()
+                            .forEach((geo) =>
+                                geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
+                            )
+                    )
                 }
             },
             '-',

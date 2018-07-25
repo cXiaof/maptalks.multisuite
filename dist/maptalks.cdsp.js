@@ -2478,16 +2478,19 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
         var deals = [];
+        var geosCoords = [];
         this._chooseGeos.forEach(function (geo) {
             deals.push(geo.copy());
-            geo.remove();
+            geosCoords.push(JSON.stringify(geo.getCoordinates()));
         });
         var geos = [];
-        this._chooseLayer.getGeometries().forEach(function (geo) {
-            if (geo.getId() !== '_hit') {
+        this.layer.getGeometries().forEach(function (geo) {
+            var coord = JSON.stringify(geo.getCoordinates());
+            if (geosCoords.includes(coord)) {
                 if (geo.type.startsWith('Multi')) geo._geometries.forEach(function (item) {
                     return geos.push(item.copy());
                 });else geos.push(geo.copy());
+                geo.remove();
             }
         });
         var result = this._compositResultGeo(geos);
@@ -2495,22 +2498,25 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._compositResultGeo = function _compositResultGeo(geos) {
+        var length = geos.length;
+
+        if (!length || length === 0) return null;
         var combine = void 0;
-        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos);else switch (geos[0].type) {
-            case 'Point':
-                combine = new maptalks.MultiPoint(geos);
-                break;
-            case 'LineString':
-                combine = new maptalks.MultiLineString(geos);
-                break;
-            default:
-                combine = new maptalks.MultiPolygon(geos);
-                break;
+        if (this._enableCollection) combine = new maptalks.GeometryCollection(geos);else {
+            switch (geos[0].type) {
+                case 'Point':
+                    combine = new maptalks.MultiPoint(geos);
+                    break;
+                case 'LineString':
+                    combine = new maptalks.MultiLineString(geos);
+                    break;
+                default:
+                    combine = new maptalks.MultiPolygon(geos);
+                    break;
+            }
+            combine.setSymbol(this.geometry.getSymbol());
+            combine.setProperties(this.geometry.getProperties());
         }
-        var symbol = this.geometry.getSymbol();
-        var properties = this.geometry.getProperties();
-        combine.setSymbol(symbol);
-        combine.setProperties(properties);
         combine.addTo(this.layer);
         return combine;
     };
@@ -2518,18 +2524,15 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
         var _this5 = this;
 
-        var geos = [];
-        var deals = [];
         var geosCoords = [];
         this._chooseLayer.getGeometries().forEach(function (geo) {
-            if (geo.getId() !== '_hit') {
-                geos.push(geo.copy());
-                geosCoords.push(JSON.stringify(geo.getCoordinates()));
-            }
+            if (geo.getId() !== '_hit') geosCoords.push(JSON.stringify(geo.getCoordinates()));
         });
+        var geos = [];
+        var deals = [];
         this._tmpLayer.getGeometries().forEach(function (geo) {
             var coord = JSON.stringify(geo.getCoordinates());
-            if (!geosCoords.includes(coord)) {
+            if (geosCoords.includes(coord)) geos.push(geo.copy());else {
                 geo = geo.copy().addTo(_this5.layer);
                 deals.push(geo);
             }
