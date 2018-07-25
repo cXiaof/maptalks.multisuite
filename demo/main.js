@@ -93,6 +93,7 @@ const getOptions = (geometry) => {
                                 geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
                             )
                         console.log(result, deals)
+                        peels = []
                     })
                 }
             },
