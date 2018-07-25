@@ -37,7 +37,10 @@ const toolbar = new maptalks.control.Toolbar({
         },
         {
             item: 'Clear',
-            click: () => layer.clear()
+            click: () => {
+                layer.clear()
+                peels = []
+            }
         }
     ]
 }).addTo(map)
