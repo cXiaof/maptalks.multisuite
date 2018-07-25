@@ -349,18 +349,21 @@ export class CDSP extends maptalks.Class {
 
     _peelWithTarget(geometry, peels) {
         let arr = [geometry.getCoordinates()[0]]
+        let deals = []
         peels.forEach((geo) => {
             if (geo instanceof maptalks.MultiPolygon)
                 geo._geometries.forEach((item) => arr.push(item.getCoordinates()[0]))
             else arr.push(geo.getCoordinates()[0])
+            deals.push(geo.copy())
             geo.remove()
         })
-        new maptalks.MultiPolygon([arr], {
+        const result = new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer)
         geometry.remove()
         this.remove()
+        return [result, deals]
     }
 
     _peelWithOutTarget(geometry) {
@@ -375,8 +378,9 @@ export class CDSP extends maptalks.Class {
         }
     }
 
-    _submitPeel() {
-        this._peelWithTarget(this.geometry, this._chooseGeos)
+    _submitPeel(callback) {
+        const [result, deals] = this._peelWithTarget(this.geometry, this._chooseGeos)
+        callback(result, deals)
     }
 }
 

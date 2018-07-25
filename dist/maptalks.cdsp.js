@@ -2559,18 +2559,21 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._peelWithTarget = function _peelWithTarget(geometry, peels) {
         var arr = [geometry.getCoordinates()[0]];
+        var deals = [];
         peels.forEach(function (geo) {
             if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
                 return arr.push(item.getCoordinates()[0]);
             });else arr.push(geo.getCoordinates()[0]);
+            deals.push(geo.copy());
             geo.remove();
         });
-        new maptalks.MultiPolygon([arr], {
+        var result = new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer);
         geometry.remove();
         this.remove();
+        return [result, deals];
     };
 
     CDSP.prototype._peelWithOutTarget = function _peelWithOutTarget(geometry) {
@@ -2585,8 +2588,12 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._submitPeel = function _submitPeel() {
-        this._peelWithTarget(this.geometry, this._chooseGeos);
+    CDSP.prototype._submitPeel = function _submitPeel(callback) {
+        var _peelWithTarget2 = this._peelWithTarget(this.geometry, this._chooseGeos),
+            result = _peelWithTarget2[0],
+            deals = _peelWithTarget2[1];
+
+        callback(result, deals);
     };
 
     return CDSP;
