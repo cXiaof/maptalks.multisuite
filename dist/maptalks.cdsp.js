@@ -6098,6 +6098,82 @@ function isEqual(value, other) {
 
 var isEqual_1 = isEqual;
 
+/** Built-in value references. */
+var spreadableSymbol = _Symbol ? _Symbol.isConcatSpreadable : undefined;
+
+/**
+ * Checks if `value` is a flattenable `arguments` object or array.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is flattenable, else `false`.
+ */
+function isFlattenable(value) {
+  return isArray_1(value) || isArguments_1(value) || !!(spreadableSymbol && value && value[spreadableSymbol]);
+}
+
+var _isFlattenable = isFlattenable;
+
+/**
+ * The base implementation of `_.flatten` with support for restricting flattening.
+ *
+ * @private
+ * @param {Array} array The array to flatten.
+ * @param {number} depth The maximum recursion depth.
+ * @param {boolean} [predicate=isFlattenable] The function invoked per iteration.
+ * @param {boolean} [isStrict] Restrict to values that pass `predicate` checks.
+ * @param {Array} [result=[]] The initial result value.
+ * @returns {Array} Returns the new flattened array.
+ */
+function baseFlatten(array, depth, predicate, isStrict, result) {
+  var index = -1,
+      length = array.length;
+
+  predicate || (predicate = _isFlattenable);
+  result || (result = []);
+
+  while (++index < length) {
+    var value = array[index];
+    if (depth > 0 && predicate(value)) {
+      if (depth > 1) {
+        // Recursively flatten arrays (susceptible to call stack limits).
+        baseFlatten(value, depth - 1, predicate, isStrict, result);
+      } else {
+        _arrayPush(result, value);
+      }
+    } else if (!isStrict) {
+      result[result.length] = value;
+    }
+  }
+  return result;
+}
+
+var _baseFlatten = baseFlatten;
+
+/** Used as references for various `Number` constants. */
+var INFINITY = 1 / 0;
+
+/**
+ * Recursively flattens `array`.
+ *
+ * @static
+ * @memberOf _
+ * @since 3.0.0
+ * @category Array
+ * @param {Array} array The array to flatten.
+ * @returns {Array} Returns the new flattened array.
+ * @example
+ *
+ * _.flattenDeep([1, [2, [3, [4]], 5]]);
+ * // => [1, 2, 3, 4, 5]
+ */
+function flattenDeep(array) {
+  var length = array == null ? 0 : array.length;
+  return length ? _baseFlatten(array, INFINITY) : [];
+}
+
+var flattenDeep_1 = flattenDeep;
+
 function _defaults(obj, defaults) { var keys = Object.getOwnPropertyNames(defaults); for (var i = 0; i < keys.length; i++) { var key = keys[i]; var value = Object.getOwnPropertyDescriptor(defaults, key); if (value && value.configurable && obj[key] === undefined) { Object.defineProperty(obj, key, value); } } return obj; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -6142,8 +6218,9 @@ var CDSP = function (_maptalks$Class) {
         if (geometry instanceof maptalks.Polygon) {
             this._insureSafeTask();
             this._task = 'peel';
+            this._savePrivateGeometry(geometry);
             if (targets instanceof maptalks.Polygon) targets = [targets];
-            if (targets.length > 0) this._peelWithTarget(geometry, targets);else this._peelWithOutTarget(geometry);
+            if (targets.length > 0) this._peelWithTarget(targets);
             return this;
         }
     };
@@ -6152,7 +6229,8 @@ var CDSP = function (_maptalks$Class) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._insureSafeTask();
             this._task = 'split';
-            if (target instanceof maptalks.LineString) this._splitWithTarget(geometry, target);else this._splitWithOutTarget(geometry);
+            this._savePrivateGeometry(geometry);
+            if (target instanceof maptalks.LineString) this._splitWithTarget(target);else this._splitWithOutTarget();
             return this;
         }
     };
@@ -6482,7 +6560,8 @@ var CDSP = function (_maptalks$Class) {
         callback(result, deals);
     };
 
-    CDSP.prototype._peelWithTarget = function _peelWithTarget(geometry, targets) {
+    CDSP.prototype._peelWithTarget = function _peelWithTarget(targets) {
+        var geometry = this.geometry;
         var arr = [geometry.getCoordinates()[0]];
         var deals = [];
         targets.forEach(function (geo) {
@@ -6501,10 +6580,6 @@ var CDSP = function (_maptalks$Class) {
         return [result, deals];
     };
 
-    CDSP.prototype._peelWithOutTarget = function _peelWithOutTarget(geometry) {
-        this._savePrivateGeometry(geometry);
-    };
-
     CDSP.prototype._clickPeel = function _clickPeel() {
         if (this.hitGeo) {
             var coordHit = this.hitGeo.getCoordinates();
@@ -6514,15 +6589,85 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._submitPeel = function _submitPeel(callback) {
-        var _peelWithTarget2 = this._peelWithTarget(this.geometry, this._chooseGeos),
+        var _peelWithTarget2 = this._peelWithTarget(this._chooseGeos),
             result = _peelWithTarget2[0],
             deals = _peelWithTarget2[1];
 
         callback(result, deals);
     };
 
-    CDSP.prototype._splitWithTarget = function _splitWithTarget(geometry, targets) {
-        console.log(Intersection);
+    CDSP.prototype._splitWithTarget = function _splitWithTarget(target) {
+        var _this7 = this;
+
+        var geometry = this.geometry;
+        if (geometry instanceof maptalks.Polygon) {
+            var coords0 = this.geometry.getCoordinates()[0];
+            var polyline = this._getPoint2dFromCoords(target);
+            var forward = true;
+            var main = [];
+            var child = [];
+            var children = [];
+            for (var i = 0; i < coords0.length - 1; i++) {
+                var line = new maptalks.LineString([coords0[i], coords0[i + 1]]);
+                var polylineTmp = this._getPoint2dFromCoords(line);
+
+                var _Intersection$interse = Intersection.intersectPolygonPolyline(polyline, polylineTmp),
+                    points = _Intersection$interse.points;
+
+                if (points.length > 0) {
+                    var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
+                        ects = _getCoordsFromPoints2[0];
+
+                    if (forward) {
+                        main.push(coords0[i], ects);
+                        child.push(ects);
+                    } else {
+                        main.push(ects);
+                        child.push(coords0[i], ects);
+                        children.push(child);
+                        child = [];
+                    }
+                    forward = !forward;
+                } else {
+                    if (forward) main.push(coords0[i]);else child.push(coords0[i]);
+                }
+            }
+            var result = [];
+            var symbol = this.geometry.getSymbol();
+            var properties = this.geometry.getProperties();
+            var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
+            result.push(geo);
+            children.forEach(function (childCoord) {
+                geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this7.layer);
+                result.push(geo);
+            });
+            var deals = this.geometry.copy();
+            this.geometry.remove();
+            target.remove();
+            this.remove();
+        }
+    };
+
+    CDSP.prototype._getPoint2dFromCoords = function _getPoint2dFromCoords(geo) {
+        var map = this._map;
+        var zoom = map.getZoom();
+        var coords = geo.getCoordinates();
+        var points = [];
+        flattenDeep_1(coords).forEach(function (coord) {
+            return points.push(map.coordinateToPoint(coord, zoom));
+        });
+        return points;
+    };
+
+    CDSP.prototype._getCoordsFromPoints = function _getCoordsFromPoints(points) {
+        if (!(points instanceof Array)) points = [points];
+        var map = this._map;
+        var zoom = map.getZoom();
+        var coords = [];
+        points.forEach(function (point2d) {
+            return coords.push(map.pointToCoordinate(point2d, zoom));
+        });
+        return coords;
     };
 
     return CDSP;

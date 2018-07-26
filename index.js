@@ -1,5 +1,6 @@
 import { Point2D, Intersection } from 'kld-intersections'
 import isEqual from 'lodash/isEqual'
+import flattenDeep from 'lodash/flattenDeep'
 
 const options = {}
 
@@ -31,9 +32,9 @@ export class CDSP extends maptalks.Class {
         if (geometry instanceof maptalks.Polygon) {
             this._insureSafeTask()
             this._task = 'peel'
+            this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.Polygon) targets = [targets]
-            if (targets.length > 0) this._peelWithTarget(geometry, targets)
-            else this._peelWithOutTarget(geometry)
+            if (targets.length > 0) this._peelWithTarget(targets)
             return this
         }
     }
@@ -42,8 +43,9 @@ export class CDSP extends maptalks.Class {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._insureSafeTask()
             this._task = 'split'
-            if (target instanceof maptalks.LineString) this._splitWithTarget(geometry, target)
-            else this._splitWithOutTarget(geometry)
+            this._savePrivateGeometry(geometry)
+            if (target instanceof maptalks.LineString) this._splitWithTarget(target)
+            else this._splitWithOutTarget()
             return this
         }
     }
@@ -359,7 +361,8 @@ export class CDSP extends maptalks.Class {
         callback(result, deals)
     }
 
-    _peelWithTarget(geometry, targets) {
+    _peelWithTarget(targets) {
+        const geometry = this.geometry
         let arr = [geometry.getCoordinates()[0]]
         let deals = []
         targets.forEach((geo) => {
@@ -378,10 +381,6 @@ export class CDSP extends maptalks.Class {
         return [result, deals]
     }
 
-    _peelWithOutTarget(geometry) {
-        this._savePrivateGeometry(geometry)
-    }
-
     _clickPeel() {
         if (this.hitGeo) {
             const coordHit = this.hitGeo.getCoordinates()
@@ -391,12 +390,72 @@ export class CDSP extends maptalks.Class {
     }
 
     _submitPeel(callback) {
-        const [result, deals] = this._peelWithTarget(this.geometry, this._chooseGeos)
+        const [result, deals] = this._peelWithTarget(this._chooseGeos)
         callback(result, deals)
     }
 
-    _splitWithTarget(geometry, targets) {
-        console.log(Intersection)
+    _splitWithTarget(target) {
+        const geometry = this.geometry
+        if (geometry instanceof maptalks.Polygon) {
+            const coords0 = this.geometry.getCoordinates()[0]
+            const polyline = this._getPoint2dFromCoords(target)
+            let forward = true
+            let main = []
+            let child = []
+            let children = []
+            for (let i = 0; i < coords0.length - 1; i++) {
+                const line = new maptalks.LineString([coords0[i], coords0[i + 1]])
+                const polylineTmp = this._getPoint2dFromCoords(line)
+                const { points } = Intersection.intersectPolygonPolyline(polyline, polylineTmp)
+                if (points.length > 0) {
+                    const [ects] = this._getCoordsFromPoints(points)
+                    if (forward) {
+                        main.push(coords0[i], ects)
+                        child.push(ects)
+                    } else {
+                        main.push(ects)
+                        child.push(coords0[i], ects)
+                        children.push(child)
+                        child = []
+                    }
+                    forward = !forward
+                } else {
+                    if (forward) main.push(coords0[i])
+                    else child.push(coords0[i])
+                }
+            }
+            let result = []
+            const symbol = this.geometry.getSymbol()
+            const properties = this.geometry.getProperties()
+            let geo = new maptalks.Polygon(main, { symbol, properties }).addTo(this.layer)
+            result.push(geo)
+            children.forEach((childCoord) => {
+                geo = new maptalks.Polygon(childCoord, { symbol, properties }).addTo(this.layer)
+                result.push(geo)
+            })
+            const deals = this.geometry.copy()
+            this.geometry.remove()
+            target.remove()
+            this.remove()
+        }
+    }
+
+    _getPoint2dFromCoords(geo) {
+        const map = this._map
+        const zoom = map.getZoom()
+        const coords = geo.getCoordinates()
+        let points = []
+        flattenDeep(coords).forEach((coord) => points.push(map.coordinateToPoint(coord, zoom)))
+        return points
+    }
+
+    _getCoordsFromPoints(points) {
+        if (!(points instanceof Array)) points = [points]
+        const map = this._map
+        const zoom = map.getZoom()
+        let coords = []
+        points.forEach((point2d) => coords.push(map.pointToCoordinate(point2d, zoom)))
+        return coords
     }
 }
 
