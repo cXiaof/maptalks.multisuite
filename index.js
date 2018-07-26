@@ -397,47 +397,53 @@ export class CDSP extends maptalks.Class {
     _splitWithTarget(target) {
         const geometry = this.geometry
         if (geometry instanceof maptalks.Polygon) {
-            const coords0 = this.geometry.getCoordinates()[0]
-            const polyline = this._getPoint2dFromCoords(target)
-            let forward = true
-            let main = []
-            let child = []
-            let children = []
-            for (let i = 0; i < coords0.length - 1; i++) {
-                const line = new maptalks.LineString([coords0[i], coords0[i + 1]])
-                const polylineTmp = this._getPoint2dFromCoords(line)
-                const { points } = Intersection.intersectPolygonPolyline(polyline, polylineTmp)
-                if (points.length > 0) {
-                    const [ects] = this._getCoordsFromPoints(points)
-                    if (forward) {
-                        main.push(coords0[i], ects)
-                        child.push(ects)
-                    } else {
-                        main.push(ects)
-                        child.push(coords0[i], ects)
-                        children.push(child)
-                        child = []
-                    }
-                    forward = !forward
-                } else {
-                    if (forward) main.push(coords0[i])
-                    else child.push(coords0[i])
-                }
-            }
-            let result = []
-            const symbol = this.geometry.getSymbol()
-            const properties = this.geometry.getProperties()
-            let geo = new maptalks.Polygon(main, { symbol, properties }).addTo(this.layer)
-            result.push(geo)
-            children.forEach((childCoord) => {
-                geo = new maptalks.Polygon(childCoord, { symbol, properties }).addTo(this.layer)
-                result.push(geo)
-            })
+            let result
+            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target)
             const deals = this.geometry.copy()
             this.geometry.remove()
             target.remove()
             this.remove()
         }
+    }
+
+    _splitWithTargetCommon(target) {
+        const coords0 = this.geometry.getCoordinates()[0]
+        const polyline = this._getPoint2dFromCoords(target)
+        let forward = true
+        let main = []
+        let child = []
+        let children = []
+        for (let i = 0; i < coords0.length - 1; i++) {
+            const line = new maptalks.LineString([coords0[i], coords0[i + 1]])
+            const polylineTmp = this._getPoint2dFromCoords(line)
+            const { points } = Intersection.intersectPolylinePolyline(polyline, polylineTmp)
+            if (points.length > 0) {
+                const [ects] = this._getCoordsFromPoints(points)
+                if (forward) {
+                    main.push(coords0[i], ects)
+                    child.push(ects)
+                } else {
+                    main.push(ects)
+                    child.push(coords0[i], ects)
+                    children.push(child)
+                    child = []
+                }
+                forward = !forward
+            } else {
+                if (forward) main.push(coords0[i])
+                else child.push(coords0[i])
+            }
+        }
+        let result = []
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+        let geo = new maptalks.Polygon(main, { symbol, properties }).addTo(this.layer)
+        result.push(geo)
+        children.forEach((childCoord) => {
+            geo = new maptalks.Polygon(childCoord, { symbol, properties }).addTo(this.layer)
+            result.push(geo)
+        })
+        return result
     }
 
     _getPoint2dFromCoords(geo) {

@@ -6591,55 +6591,61 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitWithTarget = function _splitWithTarget(target) {
-        var _this7 = this;
-
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
-            var coords0 = this.geometry.getCoordinates()[0];
-            var polyline = this._getPoint2dFromCoords(target);
-            var forward = true;
-            var main = [];
-            var child = [];
-            var children = [];
-            for (var i = 0; i < coords0.length - 1; i++) {
-                var line = new maptalks.LineString([coords0[i], coords0[i + 1]]);
-                var polylineTmp = this._getPoint2dFromCoords(line);
-
-                var _Intersection$interse = Intersection.intersectPolygonPolyline(polyline, polylineTmp),
-                    points = _Intersection$interse.points;
-
-                if (points.length > 0) {
-                    var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
-                        ects = _getCoordsFromPoints2[0];
-
-                    if (forward) {
-                        main.push(coords0[i], ects);
-                        child.push(ects);
-                    } else {
-                        main.push(ects);
-                        child.push(coords0[i], ects);
-                        children.push(child);
-                        child = [];
-                    }
-                    forward = !forward;
-                } else {
-                    if (forward) main.push(coords0[i]);else child.push(coords0[i]);
-                }
-            }
-            var result = [];
-            var symbol = this.geometry.getSymbol();
-            var properties = this.geometry.getProperties();
-            var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
-            result.push(geo);
-            children.forEach(function (childCoord) {
-                geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this7.layer);
-                result.push(geo);
-            });
+            var result = void 0;
+            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);
             var deals = this.geometry.copy();
             this.geometry.remove();
             target.remove();
             this.remove();
         }
+    };
+
+    CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
+        var _this7 = this;
+
+        var coords0 = this.geometry.getCoordinates()[0];
+        var polyline = this._getPoint2dFromCoords(target);
+        var forward = true;
+        var main = [];
+        var child = [];
+        var children = [];
+        for (var i = 0; i < coords0.length - 1; i++) {
+            var line = new maptalks.LineString([coords0[i], coords0[i + 1]]);
+            var polylineTmp = this._getPoint2dFromCoords(line);
+
+            var _Intersection$interse = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
+                points = _Intersection$interse.points;
+
+            if (points.length > 0) {
+                var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
+                    ects = _getCoordsFromPoints2[0];
+
+                if (forward) {
+                    main.push(coords0[i], ects);
+                    child.push(ects);
+                } else {
+                    main.push(ects);
+                    child.push(coords0[i], ects);
+                    children.push(child);
+                    child = [];
+                }
+                forward = !forward;
+            } else {
+                if (forward) main.push(coords0[i]);else child.push(coords0[i]);
+            }
+        }
+        var result = [];
+        var symbol = this.geometry.getSymbol();
+        var properties = this.geometry.getProperties();
+        var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
+        result.push(geo);
+        children.forEach(function (childCoord) {
+            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this7.layer);
+            result.push(geo);
+        });
+        return result;
     };
 
     CDSP.prototype._getPoint2dFromCoords = function _getPoint2dFromCoords(geo) {
