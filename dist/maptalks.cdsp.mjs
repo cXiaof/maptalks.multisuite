@@ -2256,6 +2256,7 @@ var CDSP = function (_maptalks$Class) {
         var map = this._map;
         if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
+        this._chooseGeos = [];
         this._offMapEvents();
         delete this._task;
         delete this._tmpLayer;
