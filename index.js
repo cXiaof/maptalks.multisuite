@@ -1,3 +1,4 @@
+import { Point2D, Intersection } from 'kld-intersections'
 import isEqual from 'lodash/isEqual'
 
 const options = {}
@@ -19,20 +20,30 @@ export class CDSP extends maptalks.Class {
         }
     }
 
-    decompose(geometry, peels) {
+    decompose(geometry) {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialChooseGeos(geometry, 'decompose')
             return this
         }
     }
 
-    peel(geometry, peels) {
+    peel(geometry, targets) {
         if (geometry instanceof maptalks.Polygon) {
             this._insureSafeTask()
             this._task = 'peel'
-            if (peels instanceof maptalks.Polygon) peels = [peels]
-            if (peels.length > 0) this._peelWithTarget(geometry, peels)
+            if (targets instanceof maptalks.Polygon) targets = [targets]
+            if (targets.length > 0) this._peelWithTarget(geometry, targets)
             else this._peelWithOutTarget(geometry)
+            return this
+        }
+    }
+
+    split(geometry, target) {
+        if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
+            this._insureSafeTask()
+            this._task = 'split'
+            if (target instanceof maptalks.LineString) this._splitWithTarget(geometry, target)
+            else this._splitWithOutTarget(geometry)
             return this
         }
     }
@@ -348,10 +359,10 @@ export class CDSP extends maptalks.Class {
         callback(result, deals)
     }
 
-    _peelWithTarget(geometry, peels) {
+    _peelWithTarget(geometry, targets) {
         let arr = [geometry.getCoordinates()[0]]
         let deals = []
-        peels.forEach((geo) => {
+        targets.forEach((geo) => {
             if (geo instanceof maptalks.MultiPolygon)
                 geo._geometries.forEach((item) => arr.push(item.getCoordinates()[0]))
             else arr.push(geo.getCoordinates()[0])
@@ -382,6 +393,10 @@ export class CDSP extends maptalks.Class {
     _submitPeel(callback) {
         const [result, deals] = this._peelWithTarget(this.geometry, this._chooseGeos)
         callback(result, deals)
+    }
+
+    _splitWithTarget(geometry, targets) {
+        console.log(Intersection)
     }
 }
 

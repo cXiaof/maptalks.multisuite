@@ -14,22 +14,46 @@ const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 
 const cdmp = new maptalks.CDSP()
 
+let once = false
 const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
     const { geometry } = param
     geometry.addTo(layer)
     geometry.on('contextmenu', () => geometry.setMenu(getOptions(geometry)).openMenu())
+    if (once) drawTool.disable()
 })
 
 const modes = ['Point', 'LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
 let children = []
-modes.map((item) => children.push({ item, click: () => drawTool.setMode(item).enable() }))
+modes.map((item) =>
+    children.push({
+        item,
+        click: () => {
+            once = false
+            drawTool.setMode(item).enable()
+        }
+    })
+)
+let childrenOnce = []
+modes.map((item) =>
+    childrenOnce.push({
+        item,
+        click: () => {
+            once = true
+            drawTool.setMode(item).enable()
+        }
+    })
+)
 
 const toolbar = new maptalks.control.Toolbar({
     items: [
         {
             item: 'Draw',
             children
+        },
+        {
+            item: 'DrawOnce',
+            children: childrenOnce
         },
         {
             item: 'Stop',
@@ -83,6 +107,7 @@ const getOptions = (geometry) => {
                     split = geometry
                 }
             },
+            '-',
             {
                 item: 'peel',
                 click: () => {
