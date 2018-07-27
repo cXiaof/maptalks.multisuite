@@ -6697,20 +6697,23 @@ var CDSP = function (_maptalks$Class) {
             var _Intersection$interse3 = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
                 points = _Intersection$interse3.points;
 
-            var _getCoordsFromPoints3 = this._getCoordsFromPoints(points),
-                ect = _getCoordsFromPoints3[0];
+            var ects = this._getCoordsFromPoints(points);
+            var ect = ects[0];
 
             if (isEqual_1(coords0[i], ect) || points.length > 0) {
                 if (forward) main.push(coords0[i], ect);else main.push(ect);
                 if (gap.length === 0) {
-                    gap = this._getTargetGap(target, points[0]);
+                    gap = this._getTargetGap(target);
                     if (gap.length > 0) {
                         main.push.apply(main, gap);
                         child.push.apply(child, gap.reverse());
                     }
                 }
                 if (forward) child.push(ect);else child.push(coords0[i], ect);
-                forward = !forward;
+                if (ects.length > 1) {
+                    main.push(ects[1]);
+                    child.push(ects[1]);
+                } else forward = !forward;
             } else {
                 if (forward) main.push(coords0[i]);else child.push(coords0[i]);
             }
@@ -6725,7 +6728,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._getTargetGap = function _getTargetGap(target, point0) {
+    CDSP.prototype._getTargetGap = function _getTargetGap(target) {
         var coords = target.getCoordinates();
         var polygon = this._getPoint2dFromCoords(this.geometry);
         var record = false;
@@ -6741,7 +6744,7 @@ var CDSP = function (_maptalks$Class) {
                 points = _Intersection$interse4.points;
 
             if (points.length > 0) {
-                if (isEqual_1(points[0], point0)) indexStart = i + 1;
+                if (!indexStart) indexStart = i + 1;
                 record = !record;
             }
         }

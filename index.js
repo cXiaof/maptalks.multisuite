@@ -486,12 +486,13 @@ export class CDSP extends maptalks.Class {
             const line = new maptalks.LineString([coords0[i], coords0[i + 1]])
             const polylineTmp = this._getPoint2dFromCoords(line)
             const { points } = Intersection.intersectPolylinePolyline(polyline, polylineTmp)
-            const [ect] = this._getCoordsFromPoints(points)
+            const ects = this._getCoordsFromPoints(points)
+            const [ect] = ects
             if (isEqual(coords0[i], ect) || points.length > 0) {
                 if (forward) main.push(coords0[i], ect)
                 else main.push(ect)
                 if (gap.length === 0) {
-                    gap = this._getTargetGap(target, points[0])
+                    gap = this._getTargetGap(target)
                     if (gap.length > 0) {
                         main.push(...gap)
                         child.push(...gap.reverse())
@@ -499,7 +500,10 @@ export class CDSP extends maptalks.Class {
                 }
                 if (forward) child.push(ect)
                 else child.push(coords0[i], ect)
-                forward = !forward
+                if (ects.length > 1) {
+                    main.push(ects[1])
+                    child.push(ects[1])
+                } else forward = !forward
             } else {
                 if (forward) main.push(coords0[i])
                 else child.push(coords0[i])
@@ -515,7 +519,7 @@ export class CDSP extends maptalks.Class {
         return result
     }
 
-    _getTargetGap(target, point0) {
+    _getTargetGap(target) {
         const coords = target.getCoordinates()
         const polygon = this._getPoint2dFromCoords(this.geometry)
         let record = false
@@ -528,7 +532,7 @@ export class CDSP extends maptalks.Class {
             const polyline = this._getPoint2dFromCoords(line)
             const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
             if (points.length > 0) {
-                if (isEqual(points[0], point0)) indexStart = i + 1
+                if (!indexStart) indexStart = i + 1
                 record = !record
             }
         }
