@@ -398,15 +398,11 @@ export class CDSP extends maptalks.Class {
         const geometry = this.geometry
         if (geometry instanceof maptalks.Polygon) {
             const points = this._getPolygonPolylineIntersectPoints(target)
-            if (points.length > 1) {
-                let result
-                if (target.getCoordinates().length === 2)
-                    result = this._splitWithTargetCommon(target)
-                else result = this._splitWithTargetMore(target)
-                const deals = this.geometry.copy()
-                this.geometry.remove()
-                target.remove()
-            }
+            let result
+            if (points.length > 1) result = this._splitWithTargetBase(target)
+            const deals = this.geometry.copy()
+            this.geometry.remove()
+            target.remove()
             this.remove()
         }
     }
@@ -416,6 +412,15 @@ export class CDSP extends maptalks.Class {
         const polyline = this._getPoint2dFromCoords(target)
         const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
         return points
+    }
+
+    _splitWithTargetBase(target) {
+        const points = this._getPolygonPolylineIntersectPoints(target)
+        let result = null
+        if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target)
+        else if (points.length === 2) result = this._splitWithTargetMoreTwo(target)
+        else result = this._splitWithTargetMore(target)
+        return target
     }
 
     _splitWithTargetCommon(target) {
@@ -476,15 +481,7 @@ export class CDSP extends maptalks.Class {
         return coords
     }
 
-    _splitWithTargetMore(target) {
-        const points = this._getPolygonPolylineIntersectPoints(target)
-        let result
-        if (points.length === 2) result = this._splitWithTargetMoreTwo(target, points)
-        // else result = this._splitWithTargetMore(target)
-        return result
-    }
-
-    _splitWithTargetMoreTwo(target, pointsPolygon) {
+    _splitWithTargetMoreTwo(target) {
         const coords0 = this.geometry.getCoordinates()[0]
         const polyline = this._getPoint2dFromCoords(target)
         let forward = true

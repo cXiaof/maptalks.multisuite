@@ -6600,13 +6600,11 @@ var CDSP = function (_maptalks$Class) {
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
             var points = this._getPolygonPolylineIntersectPoints(target);
-            if (points.length > 1) {
-                var result = void 0;
-                if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else result = this._splitWithTargetMore(target);
-                var deals = this.geometry.copy();
-                this.geometry.remove();
-                target.remove();
-            }
+            var result = void 0;
+            if (points.length > 1) result = this._splitWithTargetBase(target);
+            var deals = this.geometry.copy();
+            this.geometry.remove();
+            target.remove();
             this.remove();
         }
     };
@@ -6619,6 +6617,13 @@ var CDSP = function (_maptalks$Class) {
             points = _Intersection$interse.points;
 
         return points;
+    };
+
+    CDSP.prototype._splitWithTargetBase = function _splitWithTargetBase(target) {
+        var points = this._getPolygonPolylineIntersectPoints(target);
+        var result = null;
+        if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);else result = this._splitWithTargetMore(target);
+        return target;
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
@@ -6689,15 +6694,7 @@ var CDSP = function (_maptalks$Class) {
         return coords;
     };
 
-    CDSP.prototype._splitWithTargetMore = function _splitWithTargetMore(target) {
-        var points = this._getPolygonPolylineIntersectPoints(target);
-        var result = void 0;
-        if (points.length === 2) result = this._splitWithTargetMoreTwo(target, points);
-        // else result = this._splitWithTargetMore(target)
-        return result;
-    };
-
-    CDSP.prototype._splitWithTargetMoreTwo = function _splitWithTargetMoreTwo(target, pointsPolygon) {
+    CDSP.prototype._splitWithTargetMoreTwo = function _splitWithTargetMoreTwo(target) {
         var coords0 = this.geometry.getCoordinates()[0];
         var polyline = this._getPoint2dFromCoords(target);
         var forward = true;
