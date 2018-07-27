@@ -470,12 +470,74 @@ export class CDSP extends maptalks.Class {
         const polyline = this._getPoint2dFromCoords(target)
         const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
         let result
-        if (points.length === 2) result = this._splitWithTargetMoreTwo(target)
-        else result = this._splitWithTargetMore(target)
+        if (points.length === 2) result = this._splitWithTargetMoreTwo(target, points)
+        // else result = this._splitWithTargetMore(target)
         return result
     }
 
-    _splitWithTargetMoreTwo(target) {}
+    _splitWithTargetMoreTwo(target, pointsPolygon) {
+        const coords0 = this.geometry.getCoordinates()[0]
+        const polyline = this._getPoint2dFromCoords(target)
+        let forward = true
+        let main = []
+        let child = []
+        let gap = []
+        for (let i = 0; i < coords0.length - 1; i++) {
+            const line = new maptalks.LineString([coords0[i], coords0[i + 1]])
+            const polylineTmp = this._getPoint2dFromCoords(line)
+            const { points } = Intersection.intersectPolylinePolyline(polyline, polylineTmp)
+            const [ect] = this._getCoordsFromPoints(points)
+            if (isEqual(coords0[i], ect) || points.length > 0) {
+                if (forward) main.push(coords0[i], ect)
+                else main.push(ect)
+                if (gap.length === 0) {
+                    gap = this._getTargetGap(target, points[0])
+                    if (gap.length > 0) {
+                        main.push(...gap)
+                        child.push(...gap.reverse())
+                    }
+                }
+                if (forward) child.push(ect)
+                else child.push(coords0[i], ect)
+                forward = !forward
+            } else {
+                if (forward) main.push(coords0[i])
+                else child.push(coords0[i])
+            }
+        }
+        let result = []
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+        let geo = new maptalks.Polygon(main, { symbol, properties }).addTo(this.layer)
+        result.push(geo)
+        geo = new maptalks.Polygon(child, { symbol, properties }).addTo(this.layer)
+        result.push(geo)
+        return result
+    }
+
+    _getTargetGap(target, point0) {
+        const coords = target.getCoordinates()
+        const polygon = this._getPoint2dFromCoords(this.geometry)
+        let record = false
+        let index = []
+        let indexStart
+        this._tmpLayer.hide()
+        for (let i = 0; i < coords.length - 1; i++) {
+            if (record) index.push(i)
+            const line = new maptalks.LineString([coords[i], coords[i + 1]])
+            const polyline = this._getPoint2dFromCoords(line)
+            const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
+            if (points.length > 0) {
+                if (isEqual(points[0], point0)) indexStart = i + 1
+                record = !record
+            }
+        }
+        this._tmpLayer.clear().show()
+        if (index[0] !== indexStart) index.reverse()
+        let gap = []
+        index.forEach((i) => gap.push(coords[i]))
+        return gap
+    }
 }
 
 CDSP.mergeOptions(options)
