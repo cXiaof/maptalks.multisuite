@@ -10,6 +10,7 @@ const map = new maptalks.Map('map', {
     })
 })
 
+const cdmp = new maptalks.CDSP()
 const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 layer.on('addGeo', () =>
     layer
@@ -17,14 +18,11 @@ layer.on('addGeo', () =>
         .forEach((geo) => geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu()))
 )
 
-const cdmp = new maptalks.CDSP()
-
 let once = false
 const drawTool = new maptalks.DrawTool({ mode: 'Point' }).addTo(map).disable()
 drawTool.on('drawend', (param) => {
     const { geometry } = param
     geometry.addTo(layer)
-    geometry.on('contextmenu', () => geometry.setMenu(getOptions(geometry)).openMenu())
     if (once) drawTool.disable()
 })
 
