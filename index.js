@@ -77,6 +77,8 @@ export class CDSP extends maptalks.Class {
         if (this._chooseLayer) this._chooseLayer.remove()
         this._chooseGeos = []
         this._offMapEvents()
+        delete this._result
+        delete this._deals
         delete this._task
         delete this._tmpLayer
         delete this._chooseLayer
@@ -291,8 +293,8 @@ export class CDSP extends maptalks.Class {
     }
 
     _submitCombine(callback) {
-        let deals = []
-        this._chooseGeos.forEach((geo) => deals.push(geo.copy()))
+        this._deals = []
+        this._chooseGeos.forEach((geo) => this._deals.push(geo.copy()))
 
         let geosCoords = this._getGeoStringifyCoords(this._chooseGeos)
 
@@ -306,8 +308,8 @@ export class CDSP extends maptalks.Class {
                 geo.remove()
             }
         })
-        const result = this._compositResultGeo(geos)
-        callback(result, deals)
+        this._compositResultGeo(geos)
+        callback(this._result, this._deals)
     }
 
     _getGeoStringifyCoords(geo) {
@@ -337,7 +339,7 @@ export class CDSP extends maptalks.Class {
         combine.setSymbol(this.geometry.getSymbol())
         combine.setProperties(this.geometry.getProperties())
         combine.addTo(this.layer)
-        return combine
+        this._result = combine
     }
 
     _submitDecompose(callback) {
@@ -347,38 +349,37 @@ export class CDSP extends maptalks.Class {
         })
 
         let geos = []
-        let deals = []
+        this._deals = []
         this._tmpLayer.getGeometries().forEach((geo) => {
             const coord = this._getGeoStringifyCoords(geo)
             if (geosCoords.includes(coord)) geos.push(geo.copy())
             else {
                 geo = geo.copy().addTo(this.layer)
-                deals.push(geo)
+                this._deals.push(geo)
             }
         })
         this.geometry.remove()
-        const result = this._compositResultGeo(geos)
-        callback(result, deals)
+        this._compositResultGeo(geos)
+        callback(this._result, this._deals)
     }
 
     _peelWithTarget(targets) {
         const geometry = this.geometry
         let arr = [geometry.getCoordinates()[0]]
-        let deals = []
+        this._deals = []
         targets.forEach((geo) => {
             if (geo instanceof maptalks.MultiPolygon)
                 geo._geometries.forEach((item) => arr.push(item.getCoordinates()[0]))
             else arr.push(geo.getCoordinates()[0])
-            deals.push(geo.copy())
+            this._deals.push(geo.copy())
             geo.remove()
         })
-        const result = new maptalks.MultiPolygon([arr], {
+        this._result = new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer)
         geometry.remove()
         this.remove()
-        return [result, deals]
     }
 
     _clickPeel() {
@@ -390,8 +391,8 @@ export class CDSP extends maptalks.Class {
     }
 
     _submitPeel(callback) {
-        const [result, deals] = this._peelWithTarget(this._chooseGeos)
-        callback(result, deals)
+        this._peelWithTarget(this._chooseGeos)
+        callback(this._result, this._deals)
     }
 
     _splitWithTarget(target) {
@@ -399,7 +400,11 @@ export class CDSP extends maptalks.Class {
         if (geometry instanceof maptalks.Polygon) {
             const points = this._getPolygonPolylineIntersectPoints(target)
             let result
-            if (points.length > 1) result = this._splitWithTargetBase(target)
+            if (points.length > 1) {
+                if (target.getCoordinates().length === 2 || points.length === 2)
+                    result = this._splitWithTargetBase(target)
+                else result = this._splitWithTargetMore(target)
+            }
             const deals = this.geometry.copy()
             this.geometry.remove()
             target.remove()
@@ -419,7 +424,6 @@ export class CDSP extends maptalks.Class {
         let result = null
         if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target)
         else if (points.length === 2) result = this._splitWithTargetMoreTwo(target)
-        else result = this._splitWithTargetMore(target)
         return target
     }
 

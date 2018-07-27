@@ -6260,6 +6260,8 @@ var CDSP = function (_maptalks$Class) {
         if (this._chooseLayer) this._chooseLayer.remove();
         this._chooseGeos = [];
         this._offMapEvents();
+        delete this._result;
+        delete this._deals;
         delete this._task;
         delete this._tmpLayer;
         delete this._chooseLayer;
@@ -6478,9 +6480,9 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
         var _this5 = this;
 
-        var deals = [];
+        this._deals = [];
         this._chooseGeos.forEach(function (geo) {
-            return deals.push(geo.copy());
+            return _this5._deals.push(geo.copy());
         });
 
         var geosCoords = this._getGeoStringifyCoords(this._chooseGeos);
@@ -6495,8 +6497,8 @@ var CDSP = function (_maptalks$Class) {
                 geo.remove();
             }
         });
-        var result = this._compositResultGeo(geos);
-        callback(result, deals);
+        this._compositResultGeo(geos);
+        callback(this._result, this._deals);
     };
 
     CDSP.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
@@ -6529,7 +6531,7 @@ var CDSP = function (_maptalks$Class) {
         combine.setSymbol(this.geometry.getSymbol());
         combine.setProperties(this.geometry.getProperties());
         combine.addTo(this.layer);
-        return combine;
+        this._result = combine;
     };
 
     CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
@@ -6541,37 +6543,38 @@ var CDSP = function (_maptalks$Class) {
         });
 
         var geos = [];
-        var deals = [];
+        this._deals = [];
         this._tmpLayer.getGeometries().forEach(function (geo) {
             var coord = _this6._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) geos.push(geo.copy());else {
                 geo = geo.copy().addTo(_this6.layer);
-                deals.push(geo);
+                _this6._deals.push(geo);
             }
         });
         this.geometry.remove();
-        var result = this._compositResultGeo(geos);
-        callback(result, deals);
+        this._compositResultGeo(geos);
+        callback(this._result, this._deals);
     };
 
     CDSP.prototype._peelWithTarget = function _peelWithTarget(targets) {
+        var _this7 = this;
+
         var geometry = this.geometry;
         var arr = [geometry.getCoordinates()[0]];
-        var deals = [];
+        this._deals = [];
         targets.forEach(function (geo) {
             if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
                 return arr.push(item.getCoordinates()[0]);
             });else arr.push(geo.getCoordinates()[0]);
-            deals.push(geo.copy());
+            _this7._deals.push(geo.copy());
             geo.remove();
         });
-        var result = new maptalks.MultiPolygon([arr], {
+        this._result = new maptalks.MultiPolygon([arr], {
             symbol: geometry.getSymbol(),
             properties: geometry.getProperties()
         }).addTo(geometry._layer);
         geometry.remove();
         this.remove();
-        return [result, deals];
     };
 
     CDSP.prototype._clickPeel = function _clickPeel() {
@@ -6583,11 +6586,8 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._submitPeel = function _submitPeel(callback) {
-        var _peelWithTarget2 = this._peelWithTarget(this._chooseGeos),
-            result = _peelWithTarget2[0],
-            deals = _peelWithTarget2[1];
-
-        callback(result, deals);
+        this._peelWithTarget(this._chooseGeos);
+        callback(this._result, this._deals);
     };
 
     CDSP.prototype._splitWithTarget = function _splitWithTarget(target) {
@@ -6595,7 +6595,9 @@ var CDSP = function (_maptalks$Class) {
         if (geometry instanceof maptalks.Polygon) {
             var points = this._getPolygonPolylineIntersectPoints(target);
             var result = void 0;
-            if (points.length > 1) result = this._splitWithTargetBase(target);
+            if (points.length > 1) {
+                if (target.getCoordinates().length === 2 || points.length === 2) result = this._splitWithTargetBase(target);else result = this._splitWithTargetMore(target);
+            }
             var deals = this.geometry.copy();
             this.geometry.remove();
             target.remove();
@@ -6616,12 +6618,12 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._splitWithTargetBase = function _splitWithTargetBase(target) {
         var points = this._getPolygonPolylineIntersectPoints(target);
         var result = null;
-        if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);else result = this._splitWithTargetMore(target);
+        if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);
         return target;
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
-        var _this7 = this;
+        var _this8 = this;
 
         var coords0 = this.geometry.getCoordinates()[0];
         var polyline = this._getPoint2dFromCoords(target);
@@ -6660,7 +6662,7 @@ var CDSP = function (_maptalks$Class) {
         var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
         result.push(geo);
         children.forEach(function (childCoord) {
-            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this7.layer);
+            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this8.layer);
             result.push(geo);
         });
         return result;

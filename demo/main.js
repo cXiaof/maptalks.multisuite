@@ -11,6 +11,11 @@ const map = new maptalks.Map('map', {
 })
 
 const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
+layer.on('addGeo', () =>
+    layer
+        .getGeometries()
+        .forEach((geo) => geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu()))
+)
 
 const cdmp = new maptalks.CDSP()
 
@@ -129,11 +134,6 @@ const getOptions = (geometry) => {
                 click: () => {
                     console.log('submit')
                     cdmp.submit((result, deals) => {
-                        layer
-                            .getGeometries()
-                            .forEach((geo) =>
-                                geo.on('contextmenu', () => geo.setMenu(getOptions(geo)).openMenu())
-                            )
                         console.log(result, deals)
                         peels = []
                         split = undefined
