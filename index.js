@@ -397,14 +397,25 @@ export class CDSP extends maptalks.Class {
     _splitWithTarget(target) {
         const geometry = this.geometry
         if (geometry instanceof maptalks.Polygon) {
-            let result
-            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target)
-            else result = this._splitWithTargetMore(target)
-            const deals = this.geometry.copy()
-            this.geometry.remove()
-            target.remove()
+            const points = this._getPolygonPolylineIntersectPoints(target)
+            if (points.length > 1) {
+                let result
+                if (target.getCoordinates().length === 2)
+                    result = this._splitWithTargetCommon(target)
+                else result = this._splitWithTargetMore(target)
+                const deals = this.geometry.copy()
+                this.geometry.remove()
+                target.remove()
+            }
             this.remove()
         }
+    }
+
+    _getPolygonPolylineIntersectPoints(target) {
+        const polygon = this._getPoint2dFromCoords(this.geometry)
+        const polyline = this._getPoint2dFromCoords(target)
+        const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
+        return points
     }
 
     _splitWithTargetCommon(target) {
@@ -466,9 +477,7 @@ export class CDSP extends maptalks.Class {
     }
 
     _splitWithTargetMore(target) {
-        const polygon = this._getPoint2dFromCoords(this.geometry)
-        const polyline = this._getPoint2dFromCoords(target)
-        const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
+        const points = this._getPolygonPolylineIntersectPoints(target)
         let result
         if (points.length === 2) result = this._splitWithTargetMoreTwo(target, points)
         // else result = this._splitWithTargetMore(target)
@@ -492,7 +501,7 @@ export class CDSP extends maptalks.Class {
                 if (forward) main.push(coords0[i], ect)
                 else main.push(ect)
                 if (gap.length === 0) {
-                    gap = this._getTargetGap(target)
+                    gap = this._getTargetGap(target, points[0])
                     if (gap.length > 0) {
                         main.push(...gap)
                         child.push(...gap.reverse())
@@ -519,7 +528,7 @@ export class CDSP extends maptalks.Class {
         return result
     }
 
-    _getTargetGap(target) {
+    _getTargetGap(target, point0) {
         const coords = target.getCoordinates()
         const polygon = this._getPoint2dFromCoords(this.geometry)
         let record = false
@@ -529,10 +538,9 @@ export class CDSP extends maptalks.Class {
         for (let i = 0; i < coords.length - 1; i++) {
             if (record) index.push(i)
             const line = new maptalks.LineString([coords[i], coords[i + 1]])
-            const polyline = this._getPoint2dFromCoords(line)
-            const { points } = Intersection.intersectPolygonPolyline(polygon, polyline)
+            const points = this._getPolygonPolylineIntersectPoints(line)
             if (points.length > 0) {
-                if (!indexStart) indexStart = i + 1
+                if (isEqual(points[0], point0)) indexStart = i + 1
                 record = !record
             }
         }

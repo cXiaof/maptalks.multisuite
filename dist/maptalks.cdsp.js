@@ -6599,13 +6599,26 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._splitWithTarget = function _splitWithTarget(target) {
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
-            var result = void 0;
-            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else result = this._splitWithTargetMore(target);
-            var deals = this.geometry.copy();
-            this.geometry.remove();
-            target.remove();
+            var points = this._getPolygonPolylineIntersectPoints(target);
+            if (points.length > 1) {
+                var result = void 0;
+                if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else result = this._splitWithTargetMore(target);
+                var deals = this.geometry.copy();
+                this.geometry.remove();
+                target.remove();
+            }
             this.remove();
         }
+    };
+
+    CDSP.prototype._getPolygonPolylineIntersectPoints = function _getPolygonPolylineIntersectPoints(target) {
+        var polygon = this._getPoint2dFromCoords(this.geometry);
+        var polyline = this._getPoint2dFromCoords(target);
+
+        var _Intersection$interse = Intersection.intersectPolygonPolyline(polygon, polyline),
+            points = _Intersection$interse.points;
+
+        return points;
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
@@ -6621,8 +6634,8 @@ var CDSP = function (_maptalks$Class) {
             var line = new maptalks.LineString([coords0[i], coords0[i + 1]]);
             var polylineTmp = this._getPoint2dFromCoords(line);
 
-            var _Intersection$interse = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
-                points = _Intersection$interse.points;
+            var _Intersection$interse2 = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
+                points = _Intersection$interse2.points;
 
             var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
                 ects = _getCoordsFromPoints2[0];
@@ -6677,12 +6690,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitWithTargetMore = function _splitWithTargetMore(target) {
-        var polygon = this._getPoint2dFromCoords(this.geometry);
-        var polyline = this._getPoint2dFromCoords(target);
-
-        var _Intersection$interse2 = Intersection.intersectPolygonPolyline(polygon, polyline),
-            points = _Intersection$interse2.points;
-
+        var points = this._getPolygonPolylineIntersectPoints(target);
         var result = void 0;
         if (points.length === 2) result = this._splitWithTargetMoreTwo(target, points);
         // else result = this._splitWithTargetMore(target)
@@ -6709,7 +6717,7 @@ var CDSP = function (_maptalks$Class) {
             if (isEqual_1(coords0[i], ect) || points.length > 0) {
                 if (forward) main.push(coords0[i], ect);else main.push(ect);
                 if (gap.length === 0) {
-                    gap = this._getTargetGap(target);
+                    gap = this._getTargetGap(target, points[0]);
                     if (gap.length > 0) {
                         main.push.apply(main, gap);
                         child.push.apply(child, gap.reverse());
@@ -6734,7 +6742,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._getTargetGap = function _getTargetGap(target) {
+    CDSP.prototype._getTargetGap = function _getTargetGap(target, point0) {
         var coords = target.getCoordinates();
         var polygon = this._getPoint2dFromCoords(this.geometry);
         var record = false;
@@ -6744,13 +6752,9 @@ var CDSP = function (_maptalks$Class) {
         for (var i = 0; i < coords.length - 1; i++) {
             if (record) index.push(i);
             var line = new maptalks.LineString([coords[i], coords[i + 1]]);
-            var polyline = this._getPoint2dFromCoords(line);
-
-            var _Intersection$interse4 = Intersection.intersectPolygonPolyline(polygon, polyline),
-                points = _Intersection$interse4.points;
-
+            var points = this._getPolygonPolylineIntersectPoints(line);
             if (points.length > 0) {
-                if (!indexStart) indexStart = i + 1;
+                if (isEqual_1(points[0], point0)) indexStart = i + 1;
                 record = !record;
             }
         }
