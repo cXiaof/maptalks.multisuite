@@ -6600,7 +6600,7 @@ var CDSP = function (_maptalks$Class) {
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
             var result = void 0;
-            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);
+            if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else result = this._splitWithTargetMore(target);
             var deals = this.geometry.copy();
             this.geometry.remove();
             target.remove();
@@ -6624,10 +6624,10 @@ var CDSP = function (_maptalks$Class) {
             var _Intersection$interse = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
                 points = _Intersection$interse.points;
 
-            if (points.length > 0) {
-                var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
-                    ects = _getCoordsFromPoints2[0];
+            var _getCoordsFromPoints2 = this._getCoordsFromPoints(points),
+                ects = _getCoordsFromPoints2[0];
 
+            if (isEqual_1(coords0[i], ects) || points.length > 0) {
                 if (forward) {
                     main.push(coords0[i], ects);
                     child.push(ects);
@@ -6675,6 +6675,20 @@ var CDSP = function (_maptalks$Class) {
         });
         return coords;
     };
+
+    CDSP.prototype._splitWithTargetMore = function _splitWithTargetMore(target) {
+        var polygon = this._getPoint2dFromCoords(this.geometry);
+        var polyline = this._getPoint2dFromCoords(target);
+
+        var _Intersection$interse2 = Intersection.intersectPolygonPolyline(polygon, polyline),
+            points = _Intersection$interse2.points;
+
+        var result = void 0;
+        if (points.length === 2) result = this._splitWithTargetMoreTwo(target);else result = this._splitWithTargetMore(target);
+        return result;
+    };
+
+    CDSP.prototype._splitWithTargetMoreTwo = function _splitWithTargetMoreTwo(target) {};
 
     return CDSP;
 }(maptalks.Class);
