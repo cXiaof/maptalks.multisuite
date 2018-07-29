@@ -264,7 +264,7 @@ export class CDSP extends maptalks.Class {
             const coord = geo.getCoordinates()
             if (!isEqual(coordHit, coord)) chooseNext.push(geo)
         })
-        if (!hasTmp || chooseNext.length === this._chooseGeos.length)
+        if (!hasTmp && chooseNext.length === this._chooseGeos.length)
             this._chooseGeos.push(this.hitGeo)
         else this._chooseGeos = chooseNext
     }

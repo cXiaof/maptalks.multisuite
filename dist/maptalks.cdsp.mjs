@@ -6449,7 +6449,7 @@ var CDSP = function (_maptalks$Class) {
             var coord = geo.getCoordinates();
             if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
         });
-        if (!hasTmp || chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
+        if (!hasTmp && chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
     };
 
     CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
