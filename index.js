@@ -156,9 +156,9 @@ export class CDSP extends maptalks.Class {
                 geos = this._tmpLayer.identify(e.coordinate)
                 break
             case 'peel':
-                const coordThis = this.geometry.getCoordinates()
+                const coordThis = this._getSafeCoords()
                 this.layer.identify(e.coordinate).forEach((geo) => {
-                    const coord = geo.getCoordinates()
+                    const coord = this._getSafeCoords(geo)
                     if (!isEqual(coord, coordThis)) geos.push(geo)
                 })
                 break
@@ -166,6 +166,19 @@ export class CDSP extends maptalks.Class {
                 break
         }
         this._updateHitGeo(geos)
+    }
+
+    _getSafeCoords(geo = this.geometry) {
+        let coords = geo.getCoordinates()
+        if (geo.options.numberOfShellPoints) {
+            const { options } = geo
+            options.numberOfShellPoints = 300
+            geo.setOptions(options)
+            coords = [geo.getShell()]
+            options.numberOfShellPoints = 60
+            geo.setOptions(options)
+        }
+        return coords
     }
 
     _updateHitGeo(geos) {
@@ -250,8 +263,8 @@ export class CDSP extends maptalks.Class {
 
     _clickCombine() {
         if (this.hitGeo) {
-            const coordHit = this.hitGeo.getCoordinates()
-            const coordThis = this.geometry.getCoordinates()
+            const coordHit = this._getSafeCoords(this.hitGeo)
+            const coordThis = this._getSafeCoords()
             if (isEqual(coordHit, coordThis)) return null
             this._setChooseGeosExceptHit(coordHit)
             this._updateChooseGeos()
@@ -261,7 +274,7 @@ export class CDSP extends maptalks.Class {
     _setChooseGeosExceptHit(coordHit, hasTmp) {
         let chooseNext = []
         this._chooseGeos.forEach((geo) => {
-            const coord = geo.getCoordinates()
+            const coord = this._getSafeCoords(geo)
             if (!isEqual(coordHit, coord)) chooseNext.push(geo)
         })
         if (!hasTmp && chooseNext.length === this._chooseGeos.length)
@@ -285,7 +298,7 @@ export class CDSP extends maptalks.Class {
         })
         if (geos.length > 0) {
             const geo = geos[0]
-            const coordHit = geo.getCoordinates()
+            const coordHit = this._getSafeCoords(geo)
             this._setChooseGeosExceptHit(coordHit, true)
             geo.remove()
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo)
@@ -315,10 +328,10 @@ export class CDSP extends maptalks.Class {
     _getGeoStringifyCoords(geo) {
         if (geo instanceof Array) {
             let arr = []
-            geo.forEach((item) => arr.push(JSON.stringify(item.getCoordinates())))
+            geo.forEach((item) => arr.push(JSON.stringify(this._getSafeCoords(item))))
             return arr
         }
-        return JSON.stringify(geo.getCoordinates())
+        return JSON.stringify(this._getSafeCoords(geo))
     }
 
     _compositResultGeo(geos) {
@@ -365,12 +378,12 @@ export class CDSP extends maptalks.Class {
 
     _peelWithTarget(targets) {
         const geometry = this.geometry
-        let arr = [geometry.getCoordinates()[0]]
+        let arr = [this._getSafeCoords(geometry)[0]]
         this._deals = []
         targets.forEach((geo) => {
             if (geo instanceof maptalks.MultiPolygon)
-                geo._geometries.forEach((item) => arr.push(item.getCoordinates()[0]))
-            else arr.push(geo.getCoordinates()[0])
+                geo._geometries.forEach((item) => arr.push(this._getSafeCoords(item)[0]))
+            else arr.push(this._getSafeCoords(geo)[0])
             this._deals.push(geo.copy())
             geo.remove()
         })
@@ -384,7 +397,7 @@ export class CDSP extends maptalks.Class {
 
     _clickPeel() {
         if (this.hitGeo) {
-            const coordHit = this.hitGeo.getCoordinates()
+            const coordHit = this._getSafeCoords(this.hitGeo)
             this._setChooseGeosExceptHit(coordHit)
             this._updateChooseGeos()
         }
@@ -399,7 +412,7 @@ export class CDSP extends maptalks.Class {
         const geometry = this.geometry
         if (geometry instanceof maptalks.Polygon) {
             const points = this._getPolygonPolylineIntersectPoints(target)
-            if (target.getCoordinates().length === 2 || points.length === 2) {
+            if (this._getSafeCoords(target).length === 2 || points.length === 2) {
                 this._splitWithTargetBase(target)
                 this._deals = this.geometry.copy()
                 this.geometry.remove()
@@ -419,13 +432,13 @@ export class CDSP extends maptalks.Class {
     _splitWithTargetBase(target) {
         const points = this._getPolygonPolylineIntersectPoints(target)
         let result = null
-        if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target)
+        if (this._getSafeCoords(target).length === 2) result = this._splitWithTargetCommon(target)
         else if (points.length === 2) result = this._splitWithTargetMoreTwo(target)
         this._result = result
     }
 
     _splitWithTargetCommon(target) {
-        const coords0 = this.geometry.getCoordinates()[0]
+        const coords0 = this._getSafeCoords()[0]
         const polyline = this._getPoint2dFromCoords(target)
         let forward = true
         let main = []
@@ -467,7 +480,7 @@ export class CDSP extends maptalks.Class {
     _getPoint2dFromCoords(geo) {
         const map = this._map
         const zoom = map.getZoom()
-        const coords = geo.getCoordinates()
+        const coords = this._getSafeCoords(geo)
         let points = []
         flattenDeep(coords).forEach((coord) => points.push(map.coordinateToPoint(coord, zoom)))
         return points
@@ -483,7 +496,7 @@ export class CDSP extends maptalks.Class {
     }
 
     _splitWithTargetMoreTwo(target) {
-        const coords0 = this.geometry.getCoordinates()[0]
+        const coords0 = this._getSafeCoords()[0]
         const polyline = this._getPoint2dFromCoords(target)
         let forward = true
         let main = []
@@ -527,7 +540,7 @@ export class CDSP extends maptalks.Class {
     }
 
     _getTargetGap(target, point0) {
-        const coords = target.getCoordinates()
+        const coords = this._getSafeCoords(target)
         const polygon = this._getPoint2dFromCoords(this.geometry)
         let record = false
         let index = []
