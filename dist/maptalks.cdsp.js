@@ -6600,13 +6600,12 @@ var CDSP = function (_maptalks$Class) {
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
             var points = this._getPolygonPolylineIntersectPoints(target);
-            var result = void 0;
-            if (points.length > 1) {
-                if (target.getCoordinates().length === 2 || points.length === 2) result = this._splitWithTargetBase(target);else result = this._splitWithTargetMore(target);
-            }
-            var deals = this.geometry.copy();
-            this.geometry.remove();
-            target.remove();
+            if (target.getCoordinates().length === 2 || points.length === 2) {
+                this._splitWithTargetBase(target);
+                this._deals = this.geometry.copy();
+                this.geometry.remove();
+                target.remove();
+            } else console.log('too complex, not support');
             this.remove();
         }
     };
@@ -6625,7 +6624,7 @@ var CDSP = function (_maptalks$Class) {
         var points = this._getPolygonPolylineIntersectPoints(target);
         var result = null;
         if (target.getCoordinates().length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);
-        return target;
+        this._result = result;
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
