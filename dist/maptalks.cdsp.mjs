@@ -5898,9 +5898,9 @@ var Promise = _getNative(_root, 'Promise');
 var _Promise = Promise;
 
 /* Built-in method references that are verified to be native. */
-var Set = _getNative(_root, 'Set');
+var Set$1 = _getNative(_root, 'Set');
 
-var _Set = Set;
+var _Set = Set$1;
 
 /* Built-in method references that are verified to be native. */
 var WeakMap = _getNative(_root, 'WeakMap');
@@ -6144,8 +6144,504 @@ function baseFlatten(array, depth, predicate, isStrict, result) {
 
 var _baseFlatten = baseFlatten;
 
+/**
+ * This method returns the first argument it receives.
+ *
+ * @static
+ * @since 0.1.0
+ * @memberOf _
+ * @category Util
+ * @param {*} value Any value.
+ * @returns {*} Returns `value`.
+ * @example
+ *
+ * var object = { 'a': 1 };
+ *
+ * console.log(_.identity(object) === object);
+ * // => true
+ */
+function identity(value) {
+  return value;
+}
+
+var identity_1 = identity;
+
+/**
+ * A faster alternative to `Function#apply`, this function invokes `func`
+ * with the `this` binding of `thisArg` and the arguments of `args`.
+ *
+ * @private
+ * @param {Function} func The function to invoke.
+ * @param {*} thisArg The `this` binding of `func`.
+ * @param {Array} args The arguments to invoke `func` with.
+ * @returns {*} Returns the result of `func`.
+ */
+function apply(func, thisArg, args) {
+  switch (args.length) {
+    case 0:
+      return func.call(thisArg);
+    case 1:
+      return func.call(thisArg, args[0]);
+    case 2:
+      return func.call(thisArg, args[0], args[1]);
+    case 3:
+      return func.call(thisArg, args[0], args[1], args[2]);
+  }
+  return func.apply(thisArg, args);
+}
+
+var _apply = apply;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max;
+
+/**
+ * A specialized version of `baseRest` which transforms the rest array.
+ *
+ * @private
+ * @param {Function} func The function to apply a rest parameter to.
+ * @param {number} [start=func.length-1] The start position of the rest parameter.
+ * @param {Function} transform The rest array transform.
+ * @returns {Function} Returns the new function.
+ */
+function overRest(func, start, transform) {
+  start = nativeMax(start === undefined ? func.length - 1 : start, 0);
+  return function () {
+    var args = arguments,
+        index = -1,
+        length = nativeMax(args.length - start, 0),
+        array = Array(length);
+
+    while (++index < length) {
+      array[index] = args[start + index];
+    }
+    index = -1;
+    var otherArgs = Array(start + 1);
+    while (++index < start) {
+      otherArgs[index] = args[index];
+    }
+    otherArgs[start] = transform(array);
+    return _apply(func, this, otherArgs);
+  };
+}
+
+var _overRest = overRest;
+
+/**
+ * Creates a function that returns `value`.
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Util
+ * @param {*} value The value to return from the new function.
+ * @returns {Function} Returns the new constant function.
+ * @example
+ *
+ * var objects = _.times(2, _.constant({ 'a': 1 }));
+ *
+ * console.log(objects);
+ * // => [{ 'a': 1 }, { 'a': 1 }]
+ *
+ * console.log(objects[0] === objects[1]);
+ * // => true
+ */
+function constant(value) {
+  return function () {
+    return value;
+  };
+}
+
+var constant_1 = constant;
+
+var defineProperty = function () {
+  try {
+    var func = _getNative(Object, 'defineProperty');
+    func({}, '', {});
+    return func;
+  } catch (e) {}
+}();
+
+var _defineProperty = defineProperty;
+
+/**
+ * The base implementation of `setToString` without support for hot loop shorting.
+ *
+ * @private
+ * @param {Function} func The function to modify.
+ * @param {Function} string The `toString` result.
+ * @returns {Function} Returns `func`.
+ */
+var baseSetToString = !_defineProperty ? identity_1 : function (func, string) {
+  return _defineProperty(func, 'toString', {
+    'configurable': true,
+    'enumerable': false,
+    'value': constant_1(string),
+    'writable': true
+  });
+};
+
+var _baseSetToString = baseSetToString;
+
+/** Used to detect hot functions by number of calls within a span of milliseconds. */
+var HOT_COUNT = 800;
+var HOT_SPAN = 16;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeNow = Date.now;
+
+/**
+ * Creates a function that'll short out and invoke `identity` instead
+ * of `func` when it's called `HOT_COUNT` or more times in `HOT_SPAN`
+ * milliseconds.
+ *
+ * @private
+ * @param {Function} func The function to restrict.
+ * @returns {Function} Returns the new shortable function.
+ */
+function shortOut(func) {
+  var count = 0,
+      lastCalled = 0;
+
+  return function () {
+    var stamp = nativeNow(),
+        remaining = HOT_SPAN - (stamp - lastCalled);
+
+    lastCalled = stamp;
+    if (remaining > 0) {
+      if (++count >= HOT_COUNT) {
+        return arguments[0];
+      }
+    } else {
+      count = 0;
+    }
+    return func.apply(undefined, arguments);
+  };
+}
+
+var _shortOut = shortOut;
+
+/**
+ * Sets the `toString` method of `func` to return `string`.
+ *
+ * @private
+ * @param {Function} func The function to modify.
+ * @param {Function} string The `toString` result.
+ * @returns {Function} Returns `func`.
+ */
+var setToString = _shortOut(_baseSetToString);
+
+var _setToString = setToString;
+
+/**
+ * The base implementation of `_.rest` which doesn't validate or coerce arguments.
+ *
+ * @private
+ * @param {Function} func The function to apply a rest parameter to.
+ * @param {number} [start=func.length-1] The start position of the rest parameter.
+ * @returns {Function} Returns the new function.
+ */
+function baseRest(func, start) {
+  return _setToString(_overRest(func, start, identity_1), func + '');
+}
+
+var _baseRest = baseRest;
+
+/**
+ * The base implementation of `_.findIndex` and `_.findLastIndex` without
+ * support for iteratee shorthands.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} predicate The function invoked per iteration.
+ * @param {number} fromIndex The index to search from.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseFindIndex(array, predicate, fromIndex, fromRight) {
+  var length = array.length,
+      index = fromIndex + (fromRight ? 1 : -1);
+
+  while (fromRight ? index-- : ++index < length) {
+    if (predicate(array[index], index, array)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+var _baseFindIndex = baseFindIndex;
+
+/**
+ * The base implementation of `_.isNaN` without support for number objects.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
+ */
+function baseIsNaN(value) {
+  return value !== value;
+}
+
+var _baseIsNaN = baseIsNaN;
+
+/**
+ * A specialized version of `_.indexOf` which performs strict equality
+ * comparisons of values, i.e. `===`.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {*} value The value to search for.
+ * @param {number} fromIndex The index to search from.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function strictIndexOf(array, value, fromIndex) {
+  var index = fromIndex - 1,
+      length = array.length;
+
+  while (++index < length) {
+    if (array[index] === value) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+var _strictIndexOf = strictIndexOf;
+
+/**
+ * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {*} value The value to search for.
+ * @param {number} fromIndex The index to search from.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseIndexOf(array, value, fromIndex) {
+  return value === value ? _strictIndexOf(array, value, fromIndex) : _baseFindIndex(array, _baseIsNaN, fromIndex);
+}
+
+var _baseIndexOf = baseIndexOf;
+
+/**
+ * A specialized version of `_.includes` for arrays without support for
+ * specifying an index to search from.
+ *
+ * @private
+ * @param {Array} [array] The array to inspect.
+ * @param {*} target The value to search for.
+ * @returns {boolean} Returns `true` if `target` is found, else `false`.
+ */
+function arrayIncludes(array, value) {
+  var length = array == null ? 0 : array.length;
+  return !!length && _baseIndexOf(array, value, 0) > -1;
+}
+
+var _arrayIncludes = arrayIncludes;
+
+/**
+ * This function is like `arrayIncludes` except that it accepts a comparator.
+ *
+ * @private
+ * @param {Array} [array] The array to inspect.
+ * @param {*} target The value to search for.
+ * @param {Function} comparator The comparator invoked per element.
+ * @returns {boolean} Returns `true` if `target` is found, else `false`.
+ */
+function arrayIncludesWith(array, value, comparator) {
+  var index = -1,
+      length = array == null ? 0 : array.length;
+
+  while (++index < length) {
+    if (comparator(value, array[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+var _arrayIncludesWith = arrayIncludesWith;
+
+/**
+ * This method returns `undefined`.
+ *
+ * @static
+ * @memberOf _
+ * @since 2.3.0
+ * @category Util
+ * @example
+ *
+ * _.times(2, _.noop);
+ * // => [undefined, undefined]
+ */
+function noop() {
+  // No operation performed.
+}
+
+var noop_1 = noop;
+
 /** Used as references for various `Number` constants. */
 var INFINITY = 1 / 0;
+
+/**
+ * Creates a set object of `values`.
+ *
+ * @private
+ * @param {Array} values The values to add to the set.
+ * @returns {Object} Returns the new set.
+ */
+var createSet = !(_Set && 1 / _setToArray(new _Set([, -0]))[1] == INFINITY) ? noop_1 : function (values) {
+  return new _Set(values);
+};
+
+var _createSet = createSet;
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE$1 = 200;
+
+/**
+ * The base implementation of `_.uniqBy` without support for iteratee shorthands.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} [iteratee] The iteratee invoked per element.
+ * @param {Function} [comparator] The comparator invoked per element.
+ * @returns {Array} Returns the new duplicate free array.
+ */
+function baseUniq(array, iteratee, comparator) {
+  var index = -1,
+      includes = _arrayIncludes,
+      length = array.length,
+      isCommon = true,
+      result = [],
+      seen = result;
+
+  if (comparator) {
+    isCommon = false;
+    includes = _arrayIncludesWith;
+  } else if (length >= LARGE_ARRAY_SIZE$1) {
+    var set = iteratee ? null : _createSet(array);
+    if (set) {
+      return _setToArray(set);
+    }
+    isCommon = false;
+    includes = _cacheHas;
+    seen = new _SetCache();
+  } else {
+    seen = iteratee ? [] : result;
+  }
+  outer: while (++index < length) {
+    var value = array[index],
+        computed = iteratee ? iteratee(value) : value;
+
+    value = comparator || value !== 0 ? value : 0;
+    if (isCommon && computed === computed) {
+      var seenIndex = seen.length;
+      while (seenIndex--) {
+        if (seen[seenIndex] === computed) {
+          continue outer;
+        }
+      }
+      if (iteratee) {
+        seen.push(computed);
+      }
+      result.push(value);
+    } else if (!includes(seen, computed, comparator)) {
+      if (seen !== result) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+var _baseUniq = baseUniq;
+
+/**
+ * This method is like `_.isArrayLike` except that it also checks if `value`
+ * is an object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array-like object,
+ *  else `false`.
+ * @example
+ *
+ * _.isArrayLikeObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isArrayLikeObject(document.body.children);
+ * // => true
+ *
+ * _.isArrayLikeObject('abc');
+ * // => false
+ *
+ * _.isArrayLikeObject(_.noop);
+ * // => false
+ */
+function isArrayLikeObject(value) {
+  return isObjectLike_1(value) && isArrayLike_1(value);
+}
+
+var isArrayLikeObject_1 = isArrayLikeObject;
+
+/**
+ * Gets the last element of `array`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Array
+ * @param {Array} array The array to query.
+ * @returns {*} Returns the last element of `array`.
+ * @example
+ *
+ * _.last([1, 2, 3]);
+ * // => 3
+ */
+function last(array) {
+  var length = array == null ? 0 : array.length;
+  return length ? array[length - 1] : undefined;
+}
+
+var last_1 = last;
+
+/**
+ * This method is like `_.union` except that it accepts `comparator` which
+ * is invoked to compare elements of `arrays`. Result values are chosen from
+ * the first array in which the value occurs. The comparator is invoked
+ * with two arguments: (arrVal, othVal).
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Array
+ * @param {...Array} [arrays] The arrays to inspect.
+ * @param {Function} [comparator] The comparator invoked per element.
+ * @returns {Array} Returns the new array of combined values.
+ * @example
+ *
+ * var objects = [{ 'x': 1, 'y': 2 }, { 'x': 2, 'y': 1 }];
+ * var others = [{ 'x': 1, 'y': 1 }, { 'x': 1, 'y': 2 }];
+ *
+ * _.unionWith(objects, others, _.isEqual);
+ * // => [{ 'x': 1, 'y': 2 }, { 'x': 2, 'y': 1 }, { 'x': 1, 'y': 1 }]
+ */
+var unionWith = _baseRest(function (arrays) {
+  var comparator = last_1(arrays);
+  comparator = typeof comparator == 'function' ? comparator : undefined;
+  return _baseUniq(_baseFlatten(arrays, 1, isArrayLikeObject_1, true), undefined, comparator);
+});
+
+var unionWith_1 = unionWith;
+
+/** Used as references for various `Number` constants. */
+var INFINITY$1 = 1 / 0;
 
 /**
  * Recursively flattens `array`.
@@ -6163,7 +6659,7 @@ var INFINITY = 1 / 0;
  */
 function flattenDeep(array) {
   var length = array == null ? 0 : array.length;
-  return length ? _baseFlatten(array, INFINITY) : [];
+  return length ? _baseFlatten(array, INFINITY$1) : [];
 }
 
 var flattenDeep_1 = flattenDeep;
@@ -6219,12 +6715,13 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.split = function split(geometry, target) {
+    CDSP.prototype.split = function split(geometry, targets) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._insureSafeTask();
             this._task = 'split';
             this._savePrivateGeometry(geometry);
-            if (target instanceof maptalks.LineString) this._splitWithTarget(target);else this._splitWithOutTarget();
+            if (targets instanceof maptalks.LineString) targets = [targets];
+            if (targets.length > 0) this._splitWithTargets(targets);
             return this;
         }
     };
@@ -6612,18 +7109,80 @@ var CDSP = function (_maptalks$Class) {
         callback(this._result, this._deals);
     };
 
-    CDSP.prototype._splitWithTarget = function _splitWithTarget(target) {
+    CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
+        var _this11 = this;
+
         var geometry = this.geometry;
         if (geometry instanceof maptalks.Polygon) {
-            var points = this._getPolygonPolylineIntersectPoints(target);
-            if (this._getSafeCoords(target).length === 2 || points.length === 2) {
-                this._splitWithTargetBase(target);
-                this._deals = this.geometry.copy();
-                this.geometry.remove();
+            this._deals = this.geometry.copy();
+            var result = void 0;
+            targets = this._getAvailTargets(targets);
+            targets.forEach(function (target) {
+                if (result) {
+                    var results = [];
+                    result.forEach(function (geo) {
+                        _this11.geometry = geo;
+                        var res = _this11._splitWithTargetBase(target);
+                        results.push.apply(results, res);
+                    });
+                    result = results;
+                } else result = _this11._splitWithTargetBase(target);
                 target.remove();
-            } else console.log('too complex, not support');
+            });
+            this._result = result;
             this.remove();
         }
+    };
+
+    CDSP.prototype._getAvailTargets = function _getAvailTargets(targets) {
+        var _this12 = this;
+
+        var avails = [];
+        targets.forEach(function (target) {
+            avails.push.apply(avails, _this12._getAvailTarget(target));
+            target.remove();
+        });
+        return avails;
+    };
+
+    CDSP.prototype._getAvailTarget = function _getAvailTarget(target) {
+        var avail = [];
+        var avails = [];
+        var one = false;
+        var coords = this._getSafeCoords(target);
+        for (var i = 0; i < coords.length; i++) {
+            if (one) {
+                avail = unionWith_1(avail, [coords[i]], isEqual_1);
+                var lastStartInner = this.geometry.containsPoint(coords[i - 1]);
+                var lastEndOuter = !this.geometry.containsPoint(coords[i]);
+                if (lastStartInner && lastEndOuter) {
+                    one = false;
+                    avail = unionWith_1(avail, [coords[i]], isEqual_1);
+                    avails.push(avail);
+                    avail = [];
+                    i--;
+                }
+            } else {
+                if (coords[i + 1]) {
+                    var line = new maptalks.LineString([coords[i], coords[i + 1]]);
+                    var points = this._getPolygonPolylineIntersectPoints(line);
+                    if (points.length > 0) {
+                        var startOuter = !this.geometry.containsPoint(coords[i]);
+                        var endInner = this.geometry.containsPoint(coords[i + 1]);
+                        if (startOuter && endInner) {
+                            one = true;
+                            avail = unionWith_1(avail, [coords[i]], isEqual_1);
+                        } else avails.push([coords[i], coords[i + 1]]);
+                    }
+                }
+            }
+        }
+        var lines = [];
+        avails.forEach(function (line) {
+            line = Array.from(new Set(line));
+            lines.push(new maptalks.LineString(line));
+        });
+        return lines;
     };
 
     CDSP.prototype._getPolygonPolylineIntersectPoints = function _getPolygonPolylineIntersectPoints(target) {
@@ -6638,13 +7197,16 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._splitWithTargetBase = function _splitWithTargetBase(target) {
         var points = this._getPolygonPolylineIntersectPoints(target);
-        var result = null;
-        if (this._getSafeCoords(target).length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);
-        this._result = result;
+        var result = void 0;
+        if (this._getSafeCoords(target).length === 2 || points.length === 2) {
+            if (this._getSafeCoords(target).length === 2) result = this._splitWithTargetCommon(target);else if (points.length === 2) result = this._splitWithTargetMoreTwo(target);
+        } else return [this.geometry];
+        this.geometry.remove();
+        return result;
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
-        var _this11 = this;
+        var _this13 = this;
 
         var coords0 = this._getSafeCoords()[0];
         var polyline = this._getPoint2dFromCoords(target);
@@ -6683,7 +7245,7 @@ var CDSP = function (_maptalks$Class) {
         var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
         result.push(geo);
         children.forEach(function (childCoord) {
-            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this11.layer);
+            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this13.layer);
             result.push(geo);
         });
         return result;

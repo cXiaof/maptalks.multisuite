@@ -66,15 +66,16 @@ const toolbar = new maptalks.control.Toolbar({
             item: 'Clear',
             click: () => {
                 layer.clear()
+                cdmp.cancel()
                 peels = []
-                split = undefined
+                split = []
             }
         }
     ]
 }).addTo(map)
 
 let peels = []
-let split = undefined
+let split = []
 
 const getOptions = (geometry) => {
     return {
@@ -104,10 +105,10 @@ const getOptions = (geometry) => {
             },
             '-',
             {
-                item: 'used to split',
+                item: 'push to splitArr',
                 click: () => {
-                    console.log('used to split')
-                    split = geometry
+                    console.log('push to splitArr')
+                    split.push(geometry)
                 }
             },
             '-',
@@ -134,7 +135,7 @@ const getOptions = (geometry) => {
                     cdmp.submit((result, deals) => {
                         console.log(result, deals)
                         peels = []
-                        split = undefined
+                        split = []
                     })
                 }
             },
@@ -144,6 +145,8 @@ const getOptions = (geometry) => {
                 click: () => {
                     console.log('cancel')
                     cdmp.cancel()
+                    peels = []
+                    split = []
                 }
             }
         ]
