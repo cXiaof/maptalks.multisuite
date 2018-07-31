@@ -6698,9 +6698,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.combine = function combine(geometry, targets) {
         if (geometry instanceof maptalks.Geometry) {
-            this._insureSafeTask();
-            this._task = 'combine';
-            this._savePrivateGeometry(geometry);
+            this._initialTaskWithGeo(geometry, 'combine');
             if (targets instanceof maptalks.Geometry) targets = [targets];
             if (targets instanceof Array && targets.length > 0) this._compositWithTargets(targets);else this._initialChooseGeos(geometry);
             return this;
@@ -6709,9 +6707,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.decompose = function decompose(geometry, targets) {
         if (geometry instanceof maptalks.GeometryCollection) {
-            this._insureSafeTask();
-            this._task = 'decompose';
-            this._savePrivateGeometry(geometry);
+            this._initialTaskWithGeo(geometry, 'decompose');
             if (targets instanceof maptalks.Geometry) targets = [targets];
             if (targets instanceof Array && targets.length > 0) this._decomposeWithTargets(targets);else this._initialChooseGeos(geometry);
             return this;
@@ -6720,9 +6716,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.peel = function peel(geometry, targets) {
         if (geometry instanceof maptalks.Polygon) {
-            this._insureSafeTask();
-            this._task = 'peel';
-            this._savePrivateGeometry(geometry);
+            this._initialTaskWithGeo(geometry, 'peel');
             if (targets instanceof maptalks.Polygon) targets = [targets];
             if (targets instanceof Array && targets.length > 0) {
                 this._peelWithTargets(targets);
@@ -6734,9 +6728,7 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype.split = function split(geometry, targets) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
-            this._insureSafeTask();
-            this._task = 'split';
-            this._savePrivateGeometry(geometry);
+            this._initialTaskWithGeo(geometry, 'split');
             if (targets instanceof maptalks.LineString) targets = [targets];
             if (targets instanceof Array && targets.length > 0) {
                 this._splitWithTargets(targets);
@@ -6767,6 +6759,7 @@ var CDSP = function (_maptalks$Class) {
             default:
                 break;
         }
+        callback(this._result, this._deals);
         this.remove();
     };
 
@@ -6788,6 +6781,12 @@ var CDSP = function (_maptalks$Class) {
         delete this._mousemove;
         delete this._click;
         delete this._dblclick;
+    };
+
+    CDSP.prototype._initialTaskWithGeo = function _initialTaskWithGeo(geometry, task) {
+        this._insureSafeTask();
+        this._task = task;
+        this._savePrivateGeometry(geometry);
     };
 
     CDSP.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
@@ -7026,7 +7025,6 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._submitCombine = function _submitCombine(callback) {
         this._compositWithTargets();
-        callback(this._result, this._deals);
     };
 
     CDSP.prototype._compositWithTargets = function _compositWithTargets() {
@@ -7091,7 +7089,6 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
         this._decomposeWithTargets();
-        callback(this._result, this._deals);
     };
 
     CDSP.prototype._decomposeWithTargets = function _decomposeWithTargets() {
@@ -7155,12 +7152,10 @@ var CDSP = function (_maptalks$Class) {
 
     CDSP.prototype._submitPeel = function _submitPeel(callback) {
         this._peelWithTargets(this._chooseGeos);
-        callback(this._result, this._deals);
     };
 
     CDSP.prototype._submitSplit = function _submitSplit(callback) {
         this._splitWithTargets(this._chooseGeos);
-        callback(this._result, this._deals);
     };
 
     CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
