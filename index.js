@@ -163,10 +163,18 @@ export class CDSP extends maptalks.Class {
                 geos = this._tmpLayer.identify(e.coordinate)
                 break
             case 'peel':
-                const coordThis = this._getSafeCoords()
+                const coordPeel = this._getSafeCoords()
                 this.layer.identify(e.coordinate).forEach((geo) => {
                     const coord = this._getSafeCoords(geo)
-                    if (!isEqual(coord, coordThis)) geos.push(geo)
+                    if (!isEqual(coord, coordPeel)) geos.push(geo)
+                })
+                break
+            case 'split':
+                const coordSplit = this._getSafeCoords()
+                this.layer.identify(e.coordinate).forEach((geo) => {
+                    const coord = this._getSafeCoords(geo)
+                    if (!isEqual(coord, coordSplit) && geo instanceof maptalks.LineString)
+                        geos.push(geo)
                 })
                 break
             default:
@@ -658,7 +666,7 @@ export class CDSP extends maptalks.Class {
                     const [ects] = this._getCoordsFromPoints(points)
                     lineCoord.push(ects)
                     lines.push(lineCoord)
-                    lineCoord = [ects]
+                    lineCoord = [ects, coords[i + 1]]
                 } else lineCoord.push(coords[i + 1])
             } else if (lineCoord.length > 0) {
                 lineCoord.push(coords[i])

@@ -6854,10 +6854,17 @@ var CDSP = function (_maptalks$Class) {
                 geos = this._tmpLayer.identify(e.coordinate);
                 break;
             case 'peel':
-                var coordThis = this._getSafeCoords();
+                var coordPeel = this._getSafeCoords();
                 this.layer.identify(e.coordinate).forEach(function (geo) {
                     var coord = _this4._getSafeCoords(geo);
-                    if (!isEqual_1(coord, coordThis)) geos.push(geo);
+                    if (!isEqual_1(coord, coordPeel)) geos.push(geo);
+                });
+                break;
+            case 'split':
+                var coordSplit = this._getSafeCoords();
+                this.layer.identify(e.coordinate).forEach(function (geo) {
+                    var coord = _this4._getSafeCoords(geo);
+                    if (!isEqual_1(coord, coordSplit) && geo instanceof maptalks.LineString) geos.push(geo);
                 });
                 break;
             default:
@@ -7387,7 +7394,7 @@ var CDSP = function (_maptalks$Class) {
 
                     lineCoord.push(ects);
                     lines.push(lineCoord);
-                    lineCoord = [ects];
+                    lineCoord = [ects, coords[i + 1]];
                 } else lineCoord.push(coords[i + 1]);
             } else if (lineCoord.length > 0) {
                 lineCoord.push(coords[i]);
