@@ -15,16 +15,26 @@ export class CDSP extends maptalks.Class {
         this._colorChoose = '#00bcd4'
     }
 
-    combine(geometry) {
+    combine(geometry, targets) {
         if (geometry instanceof maptalks.Geometry) {
-            this._initialChooseGeos(geometry, 'combine')
+            this._insureSafeTask()
+            this._task = 'combine'
+            this._savePrivateGeometry(geometry)
+            if (targets instanceof maptalks.Geometry) targets = [targets]
+            if (targets instanceof Array && targets.length > 0) this._compositWithTargets(targets)
+            else this._initialChooseGeos(geometry)
             return this
         }
     }
 
-    decompose(geometry) {
+    decompose(geometry, targets) {
         if (geometry instanceof maptalks.GeometryCollection) {
-            this._initialChooseGeos(geometry, 'decompose')
+            this._insureSafeTask()
+            this._task = 'decompose'
+            this._savePrivateGeometry(geometry)
+            if (targets instanceof maptalks.Geometry) targets = [targets]
+            if (targets instanceof Array && targets.length > 0) this._decomposeWithTargets(targets)
+            else this._initialChooseGeos(geometry)
             return this
         }
     }
@@ -35,7 +45,7 @@ export class CDSP extends maptalks.Class {
             this._task = 'peel'
             this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.Polygon) targets = [targets]
-            if (targets.length > 0) {
+            if (targets instanceof Array && targets.length > 0) {
                 this._peelWithTargets(targets)
                 this.remove()
             }
@@ -49,7 +59,7 @@ export class CDSP extends maptalks.Class {
             this._task = 'split'
             this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.LineString) targets = [targets]
-            if (targets.length > 0) {
+            if (targets instanceof Array && targets.length > 0) {
                 this._splitWithTargets(targets)
                 this.remove()
             }
@@ -97,12 +107,7 @@ export class CDSP extends maptalks.Class {
         delete this._dblclick
     }
 
-    _initialChooseGeos(geometry, task) {
-        this._insureSafeTask()
-
-        this._task = task
-        this._savePrivateGeometry(geometry)
-
+    _initialChooseGeos(geometry) {
         switch (this._task) {
             case 'combine':
                 this._chooseGeos = [geometry]
@@ -158,6 +163,7 @@ export class CDSP extends maptalks.Class {
 
     _mousemoveEvents(e) {
         let geos = []
+        let notNeedSame = false
         switch (this._task) {
             case 'combine':
                 geos = this.layer.identify(e.coordinate)
@@ -179,11 +185,12 @@ export class CDSP extends maptalks.Class {
                     if (!isEqual(coord, coordSplit) && geo instanceof maptalks.LineString)
                         geos.push(geo)
                 })
+                notNeedSame = true
                 break
             default:
                 break
         }
-        this._updateHitGeo(geos)
+        this._updateHitGeo(geos, notNeedSame)
     }
 
     _getSafeCoords(geo = this.geometry) {
@@ -199,7 +206,7 @@ export class CDSP extends maptalks.Class {
         return coords
     }
 
-    _updateHitGeo(geos) {
+    _updateHitGeo(geos, notNeedSame) {
         const id = '_hit'
         if (this._needRefreshSymbol) {
             const hitGeoCopy = this._chooseLayer.getGeometryById(id)
@@ -212,7 +219,7 @@ export class CDSP extends maptalks.Class {
         if (geos && geos.length > 0 && !this._needRefreshSymbol) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
-            if (this._checkIsSameType(this.hitGeo)) {
+            if (this._checkIsSameType(this.hitGeo) || notNeedSame) {
                 const hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit')
                 this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id)
             } else delete this.hitGeo
@@ -327,10 +334,15 @@ export class CDSP extends maptalks.Class {
     }
 
     _submitCombine(callback) {
-        this._deals = []
-        this._chooseGeos.forEach((geo) => this._deals.push(geo.copy()))
+        this._compositWithTargets()
+        callback(this._result, this._deals)
+    }
 
-        let geosCoords = this._getGeoStringifyCoords(this._chooseGeos)
+    _compositWithTargets(targets = this._chooseGeos) {
+        this._deals = []
+        targets.forEach((geo) => this._deals.push(geo.copy()))
+
+        let geosCoords = this._getGeoStringifyCoords(targets)
 
         let geos = []
         this.layer.getGeometries().forEach((geo) => {
@@ -343,7 +355,6 @@ export class CDSP extends maptalks.Class {
             }
         })
         this._compositResultGeo(geos)
-        callback(this._result, this._deals)
     }
 
     _getGeoStringifyCoords(geo) {
@@ -377,8 +388,13 @@ export class CDSP extends maptalks.Class {
     }
 
     _submitDecompose(callback) {
+        this._decomposeWithTargets()
+        callback(this._result, this._deals)
+    }
+
+    _decomposeWithTargets(targets = this._chooseLayer.getGeometries()) {
         let geosCoords = []
-        this._chooseLayer.getGeometries().forEach((geo) => {
+        targets.forEach((geo) => {
             if (geo.getId() !== '_hit') geosCoords.push(this._getGeoStringifyCoords(geo))
         })
 
@@ -394,7 +410,6 @@ export class CDSP extends maptalks.Class {
         })
         this.geometry.remove()
         this._compositResultGeo(geos)
-        callback(this._result, this._deals)
     }
 
     _peelWithTargets(targets) {

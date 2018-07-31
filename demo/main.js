@@ -27,26 +27,21 @@ drawTool.on('drawend', (param) => {
 })
 
 const modes = ['Point', 'LineString', 'Polygon', 'Rectangle', 'Circle', 'Ellipse']
-let children = []
-modes.map((item) =>
-    children.push({
-        item,
-        click: () => {
-            once = false
-            drawTool.setMode(item).enable()
-        }
-    })
-)
-let childrenOnce = []
-modes.map((item) =>
-    childrenOnce.push({
-        item,
-        click: () => {
-            once = true
-            drawTool.setMode(item).enable()
-        }
-    })
-)
+const getDrawModes = (attr) => {
+    let arr = []
+    modes.map((item) =>
+        arr.push({
+            item,
+            click: () => {
+                once = attr
+                drawTool.setMode(item).enable()
+            }
+        })
+    )
+    return arr
+}
+const children = getDrawModes(false)
+const childrenOnce = getDrawModes(true)
 
 const toolbar = new maptalks.control.Toolbar({
     items: [
@@ -67,87 +62,42 @@ const toolbar = new maptalks.control.Toolbar({
             click: () => {
                 layer.clear()
                 cdmp.cancel()
-                peels = []
-                split = []
             }
         }
     ]
 }).addTo(map)
-
-let peels = []
-let split = []
 
 const getOptions = (geometry) => {
     return {
         items: [
             {
                 item: 'combine',
-                click: () => {
-                    console.log('combine')
-                    cdmp.combine(geometry)
-                }
+                click: () => cdmp.combine(geometry)
             },
             '-',
             {
                 item: 'decompose',
-                click: () => {
-                    console.log('decompose')
-                    cdmp.decompose(geometry)
-                }
+                click: () => cdmp.decompose(geometry)
             },
             '-',
             {
                 item: 'split',
-                click: () => {
-                    console.log('split')
-                    cdmp.split(geometry, split)
-                }
-            },
-            '-',
-            {
-                item: 'push to splitArr',
-                click: () => {
-                    console.log('push to splitArr')
-                    split.push(geometry)
-                }
+                click: () => cdmp.split(geometry)
             },
             '-',
             {
                 item: 'peel',
-                click: () => {
-                    console.log('peel')
-                    cdmp.peel(geometry, peels)
-                }
-            },
-            '-',
-            {
-                item: 'push to peelArr',
-                click: () => {
-                    console.log('push to peelArr')
-                    peels.push(geometry)
-                }
+                click: () => cdmp.peel(geometry)
             },
             '-',
             {
                 item: 'submit',
-                click: () => {
-                    console.log('submit')
-                    cdmp.submit((result, deals) => {
-                        console.log(result, deals)
-                        peels = []
-                        split = []
-                    })
-                }
+                click: () => cdmp.submit((result, deals) => console.log(result, deals))
             },
             '-',
             {
                 item: 'cancel',
-                click: () => {
-                    console.log('cancel')
-                    cdmp.cancel()
-                    peels = []
-                    split = []
-                }
+                click: () => cdmp.cancel()
             }
         ]
     }
