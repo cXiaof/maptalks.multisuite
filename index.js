@@ -35,7 +35,10 @@ export class CDSP extends maptalks.Class {
             this._task = 'peel'
             this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.Polygon) targets = [targets]
-            if (targets.length > 0) this._peelWithTarget(targets)
+            if (targets.length > 0) {
+                this._peelWithTarget(targets)
+                this.remove()
+            }
             return this
         }
     }
@@ -393,7 +396,6 @@ export class CDSP extends maptalks.Class {
             properties: geometry.getProperties()
         }).addTo(geometry._layer)
         geometry.remove()
-        this.remove()
     }
 
     _clickPeel() {
@@ -411,25 +413,27 @@ export class CDSP extends maptalks.Class {
 
     _splitWithTargets(targets) {
         const geometry = this.geometry
-        if (geometry instanceof maptalks.Polygon) {
-            this._deals = this.geometry.copy()
-            let result
-            targets = this._getAvailTargets(targets)
-            targets.forEach((target) => {
-                if (result) {
-                    let results = []
-                    result.forEach((geo) => {
-                        this.geometry = geo
-                        const res = this._splitWithTargetBase(target)
-                        results.push(...res)
-                    })
-                    result = results
-                } else result = this._splitWithTargetBase(target)
-                target.remove()
-            })
-            this._result = result
-            this.remove()
-        }
+        if (geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets)
+        this.remove()
+    }
+
+    _splitPolygonWithTargets(targets) {
+        this._deals = this.geometry.copy()
+        let result
+        targets = this._getAvailTargets(targets)
+        targets.forEach((target) => {
+            if (result) {
+                let results = []
+                result.forEach((geo) => {
+                    this.geometry = geo
+                    const res = this._splitWithTargetBase(target)
+                    results.push(...res)
+                })
+                result = results
+            } else result = this._splitWithTargetBase(target)
+            target.remove()
+        })
+        this._result = result
     }
 
     _getAvailTargets(targets) {

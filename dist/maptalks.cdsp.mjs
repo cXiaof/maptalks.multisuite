@@ -6710,7 +6710,10 @@ var CDSP = function (_maptalks$Class) {
             this._task = 'peel';
             this._savePrivateGeometry(geometry);
             if (targets instanceof maptalks.Polygon) targets = [targets];
-            if (targets.length > 0) this._peelWithTarget(targets);
+            if (targets.length > 0) {
+                this._peelWithTarget(targets);
+                this.remove();
+            }
             return this;
         }
     };
@@ -7093,7 +7096,6 @@ var CDSP = function (_maptalks$Class) {
             properties: geometry.getProperties()
         }).addTo(geometry._layer);
         geometry.remove();
-        this.remove();
     };
 
     CDSP.prototype._clickPeel = function _clickPeel() {
@@ -7110,28 +7112,30 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
+        var geometry = this.geometry;
+        if (geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets);
+        this.remove();
+    };
+
+    CDSP.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
         var _this11 = this;
 
-        var geometry = this.geometry;
-        if (geometry instanceof maptalks.Polygon) {
-            this._deals = this.geometry.copy();
-            var result = void 0;
-            targets = this._getAvailTargets(targets);
-            targets.forEach(function (target) {
-                if (result) {
-                    var results = [];
-                    result.forEach(function (geo) {
-                        _this11.geometry = geo;
-                        var res = _this11._splitWithTargetBase(target);
-                        results.push.apply(results, res);
-                    });
-                    result = results;
-                } else result = _this11._splitWithTargetBase(target);
-                target.remove();
-            });
-            this._result = result;
-            this.remove();
-        }
+        this._deals = this.geometry.copy();
+        var result = void 0;
+        targets = this._getAvailTargets(targets);
+        targets.forEach(function (target) {
+            if (result) {
+                var results = [];
+                result.forEach(function (geo) {
+                    _this11.geometry = geo;
+                    var res = _this11._splitWithTargetBase(target);
+                    results.push.apply(results, res);
+                });
+                result = results;
+            } else result = _this11._splitWithTargetBase(target);
+            target.remove();
+        });
+        this._result = result;
     };
 
     CDSP.prototype._getAvailTargets = function _getAvailTargets(targets) {
