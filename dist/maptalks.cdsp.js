@@ -5904,9 +5904,9 @@ var Promise = _getNative(_root, 'Promise');
 var _Promise = Promise;
 
 /* Built-in method references that are verified to be native. */
-var Set$1 = _getNative(_root, 'Set');
+var Set = _getNative(_root, 'Set');
 
-var _Set = Set$1;
+var _Set = Set;
 
 /* Built-in method references that are verified to be native. */
 var WeakMap = _getNative(_root, 'WeakMap');
@@ -6730,7 +6730,10 @@ var CDSP = function (_maptalks$Class) {
             this._task = 'split';
             this._savePrivateGeometry(geometry);
             if (targets instanceof maptalks.LineString) targets = [targets];
-            if (targets.length > 0) this._splitWithTargets(targets);
+            if (targets.length > 0) {
+                this._splitWithTargets(targets);
+                this.remove();
+            }
             return this;
         }
     };
@@ -7118,9 +7121,8 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
-        var geometry = this.geometry;
-        if (geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets);
-        this.remove();
+        if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets);
+        if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets);
     };
 
     CDSP.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
@@ -7128,34 +7130,33 @@ var CDSP = function (_maptalks$Class) {
 
         this._deals = this.geometry.copy();
         var result = void 0;
-        targets = this._getAvailTargets(targets);
+        targets = this._getPolygonAvailTargets(targets);
         targets.forEach(function (target) {
             if (result) {
                 var results = [];
                 result.forEach(function (geo) {
                     _this11.geometry = geo;
-                    var res = _this11._splitWithTargetBase(target);
-                    results.push.apply(results, res);
+                    results.push.apply(results, _this11._splitPolygonTargetBase(target));
                 });
                 result = results;
-            } else result = _this11._splitWithTargetBase(target);
+            } else result = _this11._splitPolygonTargetBase(target);
             target.remove();
         });
         this._result = result;
     };
 
-    CDSP.prototype._getAvailTargets = function _getAvailTargets(targets) {
+    CDSP.prototype._getPolygonAvailTargets = function _getPolygonAvailTargets(targets) {
         var _this12 = this;
 
         var avails = [];
         targets.forEach(function (target) {
-            avails.push.apply(avails, _this12._getAvailTarget(target));
+            avails.push.apply(avails, _this12._getPolygonAvailTarget(target));
             target.remove();
         });
         return avails;
     };
 
-    CDSP.prototype._getAvailTarget = function _getAvailTarget(target) {
+    CDSP.prototype._getPolygonAvailTarget = function _getPolygonAvailTarget(target) {
         var avail = [];
         var avails = [];
         var one = false;
@@ -7189,8 +7190,7 @@ var CDSP = function (_maptalks$Class) {
         }
         var lines = [];
         avails.forEach(function (line) {
-            line = Array.from(new Set(line));
-            lines.push(new maptalks.LineString(line));
+            return lines.push(new maptalks.LineString(line));
         });
         return lines;
     };
@@ -7205,7 +7205,7 @@ var CDSP = function (_maptalks$Class) {
         return points;
     };
 
-    CDSP.prototype._splitWithTargetBase = function _splitWithTargetBase(target) {
+    CDSP.prototype._splitPolygonTargetBase = function _splitPolygonTargetBase(target) {
         var points = this._getPolygonPolylineIntersectPoints(target);
         var result = void 0;
         if (this._getSafeCoords(target).length === 2 || points.length === 2) {
@@ -7351,6 +7351,83 @@ var CDSP = function (_maptalks$Class) {
             return gap.push(coords[i]);
         });
         return gap;
+    };
+
+    CDSP.prototype._splitLineWithTargets = function _splitLineWithTargets(targets) {
+        var _this14 = this;
+
+        targets = this._getLineAvailTargets(targets);
+        var result = void 0;
+        targets.forEach(function (target) {
+            if (result) {
+                var results = [];
+                result.forEach(function (geo) {
+                    _this14.geometry = geo;
+                    results.push.apply(results, _this14._splitLineTargetBase(target));
+                });
+                result = results;
+            } else result = _this14._splitLineTargetBase(target);
+            target.remove();
+        });
+        this._result = result;
+    };
+
+    CDSP.prototype._splitLineTargetBase = function _splitLineTargetBase(target) {
+        var _this15 = this;
+
+        var polyline = this._getPoint2dFromCoords(target);
+        var coords = this._getSafeCoords();
+        var lineCoord = [coords[0]];
+        var lines = [];
+        for (var i = 0; i < coords.length; i++) {
+            if (coords[i + 1]) {
+                var line = new maptalks.LineString([coords[i], coords[i + 1]]);
+                var polylineTmp = this._getPoint2dFromCoords(line);
+
+                var _Intersection$interse4 = Intersection.intersectPolylinePolyline(polyline, polylineTmp),
+                    points = _Intersection$interse4.points;
+
+                if (points.length > 0) {
+                    var _getCoordsFromPoints3 = this._getCoordsFromPoints(points),
+                        ects = _getCoordsFromPoints3[0];
+
+                    lineCoord.push(ects);
+                    lines.push(lineCoord);
+                    lineCoord = [ects];
+                } else lineCoord.push(coords[i + 1]);
+            } else if (lineCoord.length > 0) {
+                lineCoord.push(coords[i]);
+                lines.push(lineCoord);
+            }
+        }
+        var result = [];
+        lines.forEach(function (line) {
+            return result.push(new maptalks.LineString(line).addTo(_this15.layer));
+        });
+        this.geometry.remove();
+        return result;
+    };
+
+    CDSP.prototype._getLineAvailTargets = function _getLineAvailTargets(targets) {
+        var _this16 = this;
+
+        var avails = [];
+        targets.forEach(function (target) {
+            avails.push.apply(avails, _this16._getLineAvailTarget(target));
+            target.remove();
+        });
+        return avails;
+    };
+
+    CDSP.prototype._getLineAvailTarget = function _getLineAvailTarget(target) {
+        var lines = [];
+        var coords = this._getSafeCoords(target);
+        for (var i = 0; i < coords.length - 1; i++) {
+            var line = new maptalks.LineString([coords[i], coords[i + 1]]);
+            var points = this._getPolygonPolylineIntersectPoints(line);
+            if (points.length > 0) lines.push(line);
+        }
+        return lines;
     };
 
     return CDSP;

@@ -49,7 +49,10 @@ export class CDSP extends maptalks.Class {
             this._task = 'split'
             this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.LineString) targets = [targets]
-            if (targets.length > 0) this._splitWithTargets(targets)
+            if (targets.length > 0) {
+                this._splitWithTargets(targets)
+                this.remove()
+            }
             return this
         }
     }
@@ -412,40 +415,38 @@ export class CDSP extends maptalks.Class {
     }
 
     _splitWithTargets(targets) {
-        const geometry = this.geometry
-        if (geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets)
-        this.remove()
+        if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets)
+        if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets)
     }
 
     _splitPolygonWithTargets(targets) {
         this._deals = this.geometry.copy()
         let result
-        targets = this._getAvailTargets(targets)
+        targets = this._getPolygonAvailTargets(targets)
         targets.forEach((target) => {
             if (result) {
                 let results = []
                 result.forEach((geo) => {
                     this.geometry = geo
-                    const res = this._splitWithTargetBase(target)
-                    results.push(...res)
+                    results.push(...this._splitPolygonTargetBase(target))
                 })
                 result = results
-            } else result = this._splitWithTargetBase(target)
+            } else result = this._splitPolygonTargetBase(target)
             target.remove()
         })
         this._result = result
     }
 
-    _getAvailTargets(targets) {
+    _getPolygonAvailTargets(targets) {
         let avails = []
         targets.forEach((target) => {
-            avails.push(...this._getAvailTarget(target))
+            avails.push(...this._getPolygonAvailTarget(target))
             target.remove()
         })
         return avails
     }
 
-    _getAvailTarget(target) {
+    _getPolygonAvailTarget(target) {
         let avail = []
         let avails = []
         let one = false
@@ -478,10 +479,7 @@ export class CDSP extends maptalks.Class {
             }
         }
         let lines = []
-        avails.forEach((line) => {
-            line = Array.from(new Set(line))
-            lines.push(new maptalks.LineString(line))
-        })
+        avails.forEach((line) => lines.push(new maptalks.LineString(line)))
         return lines
     }
 
@@ -492,7 +490,7 @@ export class CDSP extends maptalks.Class {
         return points
     }
 
-    _splitWithTargetBase(target) {
+    _splitPolygonTargetBase(target) {
         const points = this._getPolygonPolylineIntersectPoints(target)
         let result
         if (this._getSafeCoords(target).length === 2 || points.length === 2) {
@@ -627,6 +625,70 @@ export class CDSP extends maptalks.Class {
         let gap = []
         index.forEach((i) => gap.push(coords[i]))
         return gap
+    }
+
+    _splitLineWithTargets(targets) {
+        targets = this._getLineAvailTargets(targets)
+        let result
+        targets.forEach((target) => {
+            if (result) {
+                let results = []
+                result.forEach((geo) => {
+                    this.geometry = geo
+                    results.push(...this._splitLineTargetBase(target))
+                })
+                result = results
+            } else result = this._splitLineTargetBase(target)
+            target.remove()
+        })
+        this._result = result
+    }
+
+    _splitLineTargetBase(target) {
+        const polyline = this._getPoint2dFromCoords(target)
+        const coords = this._getSafeCoords()
+        let lineCoord = [coords[0]]
+        let lines = []
+        for (let i = 0; i < coords.length; i++) {
+            if (coords[i + 1]) {
+                const line = new maptalks.LineString([coords[i], coords[i + 1]])
+                const polylineTmp = this._getPoint2dFromCoords(line)
+                const { points } = Intersection.intersectPolylinePolyline(polyline, polylineTmp)
+                if (points.length > 0) {
+                    const [ects] = this._getCoordsFromPoints(points)
+                    lineCoord.push(ects)
+                    lines.push(lineCoord)
+                    lineCoord = [ects]
+                } else lineCoord.push(coords[i + 1])
+            } else if (lineCoord.length > 0) {
+                lineCoord.push(coords[i])
+                lines.push(lineCoord)
+            }
+        }
+        let result = []
+        lines.forEach((line) => result.push(new maptalks.LineString(line).addTo(this.layer)))
+        this.geometry.remove()
+        return result
+    }
+
+    _getLineAvailTargets(targets) {
+        let avails = []
+        targets.forEach((target) => {
+            avails.push(...this._getLineAvailTarget(target))
+            target.remove()
+        })
+        return avails
+    }
+
+    _getLineAvailTarget(target) {
+        let lines = []
+        const coords = this._getSafeCoords(target)
+        for (let i = 0; i < coords.length - 1; i++) {
+            const line = new maptalks.LineString([coords[i], coords[i + 1]])
+            const points = this._getPolygonPolylineIntersectPoints(line)
+            if (points.length > 0) lines.push(line)
+        }
+        return lines
     }
 }
 
