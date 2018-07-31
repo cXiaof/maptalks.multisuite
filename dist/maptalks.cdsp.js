@@ -6717,7 +6717,7 @@ var CDSP = function (_maptalks$Class) {
             this._savePrivateGeometry(geometry);
             if (targets instanceof maptalks.Polygon) targets = [targets];
             if (targets.length > 0) {
-                this._peelWithTarget(targets);
+                this._peelWithTargets(targets);
                 this.remove();
             }
             return this;
@@ -6752,6 +6752,9 @@ var CDSP = function (_maptalks$Class) {
                 break;
             case 'peel':
                 this._submitPeel(callback);
+                break;
+            case 'split':
+                this._submitSplit(callback);
                 break;
             default:
                 break;
@@ -6962,6 +6965,9 @@ var CDSP = function (_maptalks$Class) {
             case 'peel':
                 this._clickPeel();
                 break;
+            case 'split':
+                this._clickSplit();
+                break;
             default:
                 break;
         }
@@ -7094,7 +7100,7 @@ var CDSP = function (_maptalks$Class) {
         callback(this._result, this._deals);
     };
 
-    CDSP.prototype._peelWithTarget = function _peelWithTarget(targets) {
+    CDSP.prototype._peelWithTargets = function _peelWithTargets(targets) {
         var _this10 = this;
 
         var geometry = this.geometry;
@@ -7122,12 +7128,26 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
+    CDSP.prototype._clickSplit = function _clickSplit() {
+        if (this.hitGeo) {
+            var coordHit = this._getSafeCoords(this.hitGeo);
+            this._setChooseGeosExceptHit(coordHit);
+            this._updateChooseGeos();
+        }
+    };
+
     CDSP.prototype._submitPeel = function _submitPeel(callback) {
-        this._peelWithTarget(this._chooseGeos);
+        this._peelWithTargets(this._chooseGeos);
+        callback(this._result, this._deals);
+    };
+
+    CDSP.prototype._submitSplit = function _submitSplit(callback) {
+        this._splitWithTargets(this._chooseGeos);
         callback(this._result, this._deals);
     };
 
     CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
+        this._deals = this.geometry.copy();
         if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets);
         if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets);
     };
@@ -7135,7 +7155,6 @@ var CDSP = function (_maptalks$Class) {
     CDSP.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
         var _this11 = this;
 
-        this._deals = this.geometry.copy();
         var result = void 0;
         targets = this._getPolygonAvailTargets(targets);
         targets.forEach(function (target) {

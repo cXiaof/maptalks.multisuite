@@ -36,7 +36,7 @@ export class CDSP extends maptalks.Class {
             this._savePrivateGeometry(geometry)
             if (targets instanceof maptalks.Polygon) targets = [targets]
             if (targets.length > 0) {
-                this._peelWithTarget(targets)
+                this._peelWithTargets(targets)
                 this.remove()
             }
             return this
@@ -67,6 +67,9 @@ export class CDSP extends maptalks.Class {
                 break
             case 'peel':
                 this._submitPeel(callback)
+                break
+            case 'split':
+                this._submitSplit(callback)
                 break
             default:
                 break
@@ -271,6 +274,9 @@ export class CDSP extends maptalks.Class {
             case 'peel':
                 this._clickPeel()
                 break
+            case 'split':
+                this._clickSplit()
+                break
             default:
                 break
         }
@@ -391,7 +397,7 @@ export class CDSP extends maptalks.Class {
         callback(this._result, this._deals)
     }
 
-    _peelWithTarget(targets) {
+    _peelWithTargets(targets) {
         const geometry = this.geometry
         let arr = [this._getSafeCoords(geometry)[0]]
         this._deals = []
@@ -417,18 +423,31 @@ export class CDSP extends maptalks.Class {
         }
     }
 
+    _clickSplit() {
+        if (this.hitGeo) {
+            const coordHit = this._getSafeCoords(this.hitGeo)
+            this._setChooseGeosExceptHit(coordHit)
+            this._updateChooseGeos()
+        }
+    }
+
     _submitPeel(callback) {
-        this._peelWithTarget(this._chooseGeos)
+        this._peelWithTargets(this._chooseGeos)
+        callback(this._result, this._deals)
+    }
+
+    _submitSplit(callback) {
+        this._splitWithTargets(this._chooseGeos)
         callback(this._result, this._deals)
     }
 
     _splitWithTargets(targets) {
+        this._deals = this.geometry.copy()
         if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets)
         if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets)
     }
 
     _splitPolygonWithTargets(targets) {
-        this._deals = this.geometry.copy()
         let result
         targets = this._getPolygonAvailTargets(targets)
         targets.forEach((target) => {
