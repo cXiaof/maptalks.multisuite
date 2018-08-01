@@ -1,7 +1,7 @@
 {
   "name": "maptalks.cdsp",
   "version": "0.1.0-alpha.1",
-  "description": "An Edit Suite with Combine/Decompose/Split/Peel",
+  "description": "An Edit Suite with Combine<->Decompose,Peel<->Fill,Split",
   "license": "MIT",
   "author": "cXiaof",
   "repository": {
@@ -39,7 +39,6 @@
   },
   "dependencies": {
     "kld-intersections": "^0.4.2",
-    "lodash": "^4.17.10",
-    "martinez-polygon-clipping": "^0.4.3"
+    "lodash": "^4.17.10"
   }
 }
