@@ -1,24 +1,24 @@
-# maptalks.cdsp
+# maptalks.multiSuite
 
-An Edit Suite with Combine<->Decompose,Peel<->Fill,Split.
+An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.
 
 ## Examples
 
-### [DEMO](https://cxiaof.github.io/maptalks.cdsp/demo/index.html)
+### [DEMO](https://cxiaof.github.io/maptalks.multiSuite/demo/index.html)
 
 ## Install
 
--   Install with npm: `npm install maptalks.cdsp`.
--   Download from [dist directory](https://github.com/cXiaof/maptalks.cdsp/tree/master/dist).
--   Use unpkg CDN: `https://unpkg.com/maptalks.cdsp/dist/maptalks.cdsp.min.js`
+-   Install with npm: `npm install maptalks.multiSuite`.
+-   Download from [dist directory](https://github.com/cXiaof/maptalks.multiSuite/tree/master/dist).
+-   Use unpkg CDN: `https://unpkg.com/maptalks.multiSuite/dist/maptalks.multiSuite.min.js`
 
 ## Usage
 
-As a plugin, `maptalks.cdsp` must be loaded after `maptalks.js` in browsers. You can also use `'import { cdsp } from "maptalks.cdsp"` when developing with webpack.
+As a plugin, `maptalks.multiSuite` must be loaded after `maptalks.js` in browsers. You can also use `'import { MultiSuite } from "maptalks.multiSuite"` when developing with webpack.
 
 ```html
 <script type="text/javascript" src="https://unpkg.com/maptalks/dist/maptalks.min.js"></script>
-<script type="text/javascript" src="https://unpkg.com/maptalks.cdsp/dist/maptalks.cdsp.min.js"></script>
+<script type="text/javascript" src="https://unpkg.com/maptalks.multiSuite/dist/maptalks.multiSuite.min.js"></script>
 <script>
 
 </script>
@@ -27,7 +27,7 @@ As a plugin, `maptalks.cdsp` must be loaded after `maptalks.js` in browsers. You
 ## API Reference
 
 ```javascript
-new maptalks.CDSP(options)
+new maptalks.MultiSuite(options)
 ```
 
 -   options **Object** options

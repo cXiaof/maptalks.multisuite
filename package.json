@@ -1,26 +1,19 @@
 {
-  "name": "maptalks.cdsp",
-  "version": "0.1.0-alpha.1",
-  "description": "An Edit Suite with Combine<->Decompose,Peel<->Fill,Split",
+  "name": "maptalks.multiSuite",
+  "version": "0.1.0-beta.1",
+  "description": "An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.",
   "license": "MIT",
   "author": "cXiaof",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cXiaof/maptalks.cdsp.git"
+    "url": "https://github.com/cXiaof/maptalks.multiSuite.git"
   },
-  "main": "dist/maptalks.cdsp.min.js",
-  "keywords": [
-    "maptalks",
-    "cdsp",
-    "combine",
-    "decompose",
-    "split",
-    "peel"
-  ],
+  "main": "dist/maptalks.multiSuite.min.js",
+  "keywords": ["maptalks", "multiSuite", "combine", "decompose", "split", "peel"],
   "bugs": {
-    "url": "https://github.com/cXiaof/maptalks.cdsp/issues"
+    "url": "https://github.com/cXiaof/maptalks.multiSuite/issues"
   },
-  "homepage": "https://github.com/cXiaof/maptalks.cdsp",
+  "homepage": "https://github.com/cXiaof/maptalks.multiSuite",
   "scripts": {
     "prepublish": "gulp minify",
     "b": "gulp minify",

@@ -1,5 +1,5 @@
 /*!
- * maptalks.cdsp v0.1.0-alpha.1
+ * maptalks.multiSuite v0.1.0-beta.1
  * LICENSE : MIT
  * (c) 2016-2018 maptalks.org
  */
@@ -6680,11 +6680,11 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var options = {};
 
-var CDSP = function (_maptalks$Class) {
-    _inherits(CDSP, _maptalks$Class);
+var MultiSuite = function (_maptalks$Class) {
+    _inherits(MultiSuite, _maptalks$Class);
 
-    function CDSP(options) {
-        _classCallCheck(this, CDSP);
+    function MultiSuite(options) {
+        _classCallCheck(this, MultiSuite);
 
         var _this = _possibleConstructorReturn(this, _maptalks$Class.call(this, options));
 
@@ -6696,7 +6696,7 @@ var CDSP = function (_maptalks$Class) {
         return _this;
     }
 
-    CDSP.prototype.combine = function combine(geometry, targets) {
+    MultiSuite.prototype.combine = function combine(geometry, targets) {
         if (geometry instanceof maptalks.Geometry) {
             this._initialTaskWithGeo(geometry, 'combine');
             if (targets instanceof maptalks.Geometry) targets = [targets];
@@ -6705,7 +6705,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.decompose = function decompose(geometry, targets) {
+    MultiSuite.prototype.decompose = function decompose(geometry, targets) {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialTaskWithGeo(geometry, 'decompose');
             if (targets instanceof maptalks.Geometry) targets = [targets];
@@ -6714,7 +6714,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.peel = function peel(geometry, targets) {
+    MultiSuite.prototype.peel = function peel(geometry, targets) {
         if (geometry instanceof maptalks.Polygon) {
             this._initialTaskWithGeo(geometry, 'peel');
             if (targets instanceof maptalks.Polygon) targets = [targets];
@@ -6726,7 +6726,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.fill = function fill(geometry, targets, fillAll) {
+    MultiSuite.prototype.fill = function fill(geometry, targets, fillAll) {
         var _this2 = this;
 
         if (geometry instanceof maptalks.MultiPolygon) {
@@ -6752,7 +6752,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.split = function split(geometry, targets) {
+    MultiSuite.prototype.split = function split(geometry, targets) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._initialTaskWithGeo(geometry, 'split');
             if (targets instanceof maptalks.LineString) targets = [targets];
@@ -6764,7 +6764,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype.submit = function submit() {
+    MultiSuite.prototype.submit = function submit() {
         var callback = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : function () {
             return false;
         };
@@ -6792,11 +6792,11 @@ var CDSP = function (_maptalks$Class) {
         this.remove();
     };
 
-    CDSP.prototype.cancel = function cancel() {
+    MultiSuite.prototype.cancel = function cancel() {
         this.remove();
     };
 
-    CDSP.prototype.remove = function remove() {
+    MultiSuite.prototype.remove = function remove() {
         var map = this._map;
         if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
@@ -6812,13 +6812,13 @@ var CDSP = function (_maptalks$Class) {
         delete this._dblclick;
     };
 
-    CDSP.prototype._initialTaskWithGeo = function _initialTaskWithGeo(geometry, task) {
+    MultiSuite.prototype._initialTaskWithGeo = function _initialTaskWithGeo(geometry, task) {
         this._insureSafeTask();
         this._task = task;
         this._savePrivateGeometry(geometry);
     };
 
-    CDSP.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
+    MultiSuite.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
         var _this3 = this;
 
         switch (this._task) {
@@ -6837,19 +6837,19 @@ var CDSP = function (_maptalks$Class) {
         this._updateChooseGeos();
     };
 
-    CDSP.prototype._insureSafeTask = function _insureSafeTask() {
+    MultiSuite.prototype._insureSafeTask = function _insureSafeTask() {
         if (map._map_tool && drawTool instanceof maptalks.DrawTool) drawTool.disable();
         if (this.geometry) this.remove();
     };
 
-    CDSP.prototype._savePrivateGeometry = function _savePrivateGeometry(geometry) {
+    MultiSuite.prototype._savePrivateGeometry = function _savePrivateGeometry(geometry) {
         this.geometry = geometry;
         this.layer = geometry._layer;
         if (geometry.type.startsWith('Multi')) this.layer = geometry._geometries[0]._layer;
         this._addTo(this.layer.map);
     };
 
-    CDSP.prototype._addTo = function _addTo(map) {
+    MultiSuite.prototype._addTo = function _addTo(map) {
         if (this._chooseLayer) this.remove();
         this._map = map;
         this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map).bringToFront();
@@ -6858,7 +6858,7 @@ var CDSP = function (_maptalks$Class) {
         return this;
     };
 
-    CDSP.prototype._registerMapEvents = function _registerMapEvents() {
+    MultiSuite.prototype._registerMapEvents = function _registerMapEvents() {
         var _this4 = this;
 
         if (!this._mousemove) {
@@ -6874,7 +6874,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._offMapEvents = function _offMapEvents() {
+    MultiSuite.prototype._offMapEvents = function _offMapEvents() {
         if (this._mousemove) {
             var _map2 = this._map;
             _map2.off('mousemove', this._mousemove, this);
@@ -6882,7 +6882,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
+    MultiSuite.prototype._mousemoveEvents = function _mousemoveEvents(e) {
         var _this5 = this;
 
         var geos = [];
@@ -6918,23 +6918,24 @@ var CDSP = function (_maptalks$Class) {
         this._updateHitGeo(geos, notNeedSame);
     };
 
-    CDSP.prototype._getSafeCoords = function _getSafeCoords() {
+    MultiSuite.prototype._getSafeCoords = function _getSafeCoords() {
         var geo = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this.geometry;
 
         var coords = geo.getCoordinates();
         if (geo.options.numberOfShellPoints) {
             var _options = geo.options;
+            var numberOfShellPoints = _options.numberOfShellPoints;
 
             _options.numberOfShellPoints = 300;
             geo.setOptions(_options);
             coords = [geo.getShell()];
-            _options.numberOfShellPoints = 60;
+            _options.numberOfShellPoints = numberOfShellPoints || 60;
             geo.setOptions(_options);
         }
         return coords;
     };
 
-    CDSP.prototype._updateHitGeo = function _updateHitGeo(geos, notNeedSame) {
+    MultiSuite.prototype._updateHitGeo = function _updateHitGeo(geos, notNeedSame) {
         var id = '_hit';
         if (this._needRefreshSymbol) {
             var hitGeoCopy = this._chooseLayer.getGeometryById(id);
@@ -6944,7 +6945,7 @@ var CDSP = function (_maptalks$Class) {
             }
             this._needRefreshSymbol = false;
         }
-        if (geos && geos.length > 0 && !this._needRefreshSymbol) {
+        if (geos && geos.length > 0) {
             this._needRefreshSymbol = true;
             this.hitGeo = geos[0];
             if (this._checkIsSameType(this.hitGeo) || notNeedSame) {
@@ -6954,13 +6955,13 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._checkIsSameType = function _checkIsSameType(geo) {
+    MultiSuite.prototype._checkIsSameType = function _checkIsSameType(geo) {
         var typeHit = geo.type;
         var typeThis = this.geometry.type;
         return typeHit.includes(typeThis) || typeThis.includes(typeHit);
     };
 
-    CDSP.prototype._getSymbolOrDefault = function _getSymbolOrDefault(geo, type) {
+    MultiSuite.prototype._getSymbolOrDefault = function _getSymbolOrDefault(geo, type) {
         var symbol = geo.getSymbol();
         var color = this['_color' + type];
         var lineWidth = 4;
@@ -6986,11 +6987,11 @@ var CDSP = function (_maptalks$Class) {
         return symbol;
     };
 
-    CDSP.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
+    MultiSuite.prototype._copyGeoUpdateSymbol = function _copyGeoUpdateSymbol(geo, symbol) {
         return geo.copy().updateSymbol(symbol).addTo(this._chooseLayer);
     };
 
-    CDSP.prototype._clickEvents = function _clickEvents(e) {
+    MultiSuite.prototype._clickEvents = function _clickEvents(e) {
         switch (this._task) {
             case 'combine':
                 this._clickCombine();
@@ -7008,7 +7009,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._clickCombine = function _clickCombine() {
+    MultiSuite.prototype._clickCombine = function _clickCombine() {
         if (this.hitGeo) {
             var coordHit = this._getSafeCoords(this.hitGeo);
             var coordThis = this._getSafeCoords();
@@ -7018,7 +7019,7 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
-    CDSP.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit, hasTmp) {
+    MultiSuite.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit, hasTmp) {
         var _this6 = this;
 
         var chooseNext = [];
@@ -7029,7 +7030,7 @@ var CDSP = function (_maptalks$Class) {
         if (!hasTmp && chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
     };
 
-    CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
+    MultiSuite.prototype._updateChooseGeos = function _updateChooseGeos() {
         var _this7 = this;
 
         var layer = this._chooseLayer;
@@ -7040,7 +7041,7 @@ var CDSP = function (_maptalks$Class) {
         });
     };
 
-    CDSP.prototype._clickDecompose = function _clickDecompose(e) {
+    MultiSuite.prototype._clickDecompose = function _clickDecompose(e) {
         var geos = [];
         this._chooseLayer.identify(e.coordinate).forEach(function (geo) {
             if (geo.getId() !== '_hit') geos.push(geo);
@@ -7054,11 +7055,11 @@ var CDSP = function (_maptalks$Class) {
         this._updateChooseGeos();
     };
 
-    CDSP.prototype._submitCombine = function _submitCombine() {
+    MultiSuite.prototype._submitCombine = function _submitCombine() {
         this._compositWithTargets();
     };
 
-    CDSP.prototype._compositWithTargets = function _compositWithTargets() {
+    MultiSuite.prototype._compositWithTargets = function _compositWithTargets() {
         var _this8 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
@@ -7083,7 +7084,7 @@ var CDSP = function (_maptalks$Class) {
         this._compositResultGeo(geos);
     };
 
-    CDSP.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
+    MultiSuite.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
         var _this9 = this;
 
         if (geo instanceof Array) {
@@ -7096,7 +7097,7 @@ var CDSP = function (_maptalks$Class) {
         return JSON.stringify(this._getSafeCoords(geo));
     };
 
-    CDSP.prototype._compositResultGeo = function _compositResultGeo(geos) {
+    MultiSuite.prototype._compositResultGeo = function _compositResultGeo(geos) {
         var length = geos.length;
 
         if (!length || length === 0) return null;
@@ -7118,11 +7119,11 @@ var CDSP = function (_maptalks$Class) {
         this._result = combine;
     };
 
-    CDSP.prototype._submitDecompose = function _submitDecompose() {
+    MultiSuite.prototype._submitDecompose = function _submitDecompose() {
         this._decomposeWithTargets();
     };
 
-    CDSP.prototype._decomposeWithTargets = function _decomposeWithTargets() {
+    MultiSuite.prototype._decomposeWithTargets = function _decomposeWithTargets() {
         var _this10 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseLayer.getGeometries();
@@ -7145,7 +7146,7 @@ var CDSP = function (_maptalks$Class) {
         this._compositResultGeo(geos);
     };
 
-    CDSP.prototype._peelWithTargets = function _peelWithTargets() {
+    MultiSuite.prototype._peelWithTargets = function _peelWithTargets() {
         var _this11 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
@@ -7167,19 +7168,19 @@ var CDSP = function (_maptalks$Class) {
         geometry.remove();
     };
 
-    CDSP.prototype._submitPeel = function _submitPeel() {
+    MultiSuite.prototype._submitPeel = function _submitPeel() {
         this._peelWithTargets();
     };
 
-    CDSP.prototype._submitFill = function _submitFill() {
+    MultiSuite.prototype._submitFill = function _submitFill() {
         this._fillWithTargets();
     };
 
-    CDSP.prototype._submitSplit = function _submitSplit() {
+    MultiSuite.prototype._submitSplit = function _submitSplit() {
         this._splitWithTargets();
     };
 
-    CDSP.prototype._fillAll = function _fillAll() {
+    MultiSuite.prototype._fillAll = function _fillAll() {
         var coords = this.geometry.getCoordinates();
         var symbol = this.geometry.getSymbol();
         var properties = this.geometry.getProperties();
@@ -7187,7 +7188,7 @@ var CDSP = function (_maptalks$Class) {
         this.geometry.remove();
     };
 
-    CDSP.prototype._fillWithTargets = function _fillWithTargets() {
+    MultiSuite.prototype._fillWithTargets = function _fillWithTargets() {
         var _this12 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
@@ -7211,7 +7212,7 @@ var CDSP = function (_maptalks$Class) {
         this.geometry.remove();
     };
 
-    CDSP.prototype._splitWithTargets = function _splitWithTargets() {
+    MultiSuite.prototype._splitWithTargets = function _splitWithTargets() {
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
         this._deals = this.geometry.copy();
@@ -7219,7 +7220,7 @@ var CDSP = function (_maptalks$Class) {
         if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets);
     };
 
-    CDSP.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
+    MultiSuite.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
         var _this13 = this;
 
         var result = void 0;
@@ -7238,7 +7239,7 @@ var CDSP = function (_maptalks$Class) {
         this._result = result;
     };
 
-    CDSP.prototype._getPolygonAvailTargets = function _getPolygonAvailTargets(targets) {
+    MultiSuite.prototype._getPolygonAvailTargets = function _getPolygonAvailTargets(targets) {
         var _this14 = this;
 
         var avails = [];
@@ -7249,7 +7250,7 @@ var CDSP = function (_maptalks$Class) {
         return avails;
     };
 
-    CDSP.prototype._getPolygonAvailTarget = function _getPolygonAvailTarget(target) {
+    MultiSuite.prototype._getPolygonAvailTarget = function _getPolygonAvailTarget(target) {
         var avail = [];
         var avails = [];
         var one = false;
@@ -7288,7 +7289,7 @@ var CDSP = function (_maptalks$Class) {
         return lines;
     };
 
-    CDSP.prototype._getPolygonPolylineIntersectPoints = function _getPolygonPolylineIntersectPoints(target) {
+    MultiSuite.prototype._getPolygonPolylineIntersectPoints = function _getPolygonPolylineIntersectPoints(target) {
         var polygon = this._getPoint2dFromCoords(this.geometry);
         var polyline = this._getPoint2dFromCoords(target);
 
@@ -7298,7 +7299,7 @@ var CDSP = function (_maptalks$Class) {
         return points;
     };
 
-    CDSP.prototype._splitPolygonTargetBase = function _splitPolygonTargetBase(target) {
+    MultiSuite.prototype._splitPolygonTargetBase = function _splitPolygonTargetBase(target) {
         var points = this._getPolygonPolylineIntersectPoints(target);
         var result = void 0;
         if (this._getSafeCoords(target).length === 2 || points.length === 2) {
@@ -7308,7 +7309,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
+    MultiSuite.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
         var _this15 = this;
 
         var coords0 = this._getSafeCoords()[0];
@@ -7354,7 +7355,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._getPoint2dFromCoords = function _getPoint2dFromCoords(geo) {
+    MultiSuite.prototype._getPoint2dFromCoords = function _getPoint2dFromCoords(geo) {
         var map = this._map;
         var zoom = map.getZoom();
         var coords = this._getSafeCoords(geo);
@@ -7365,7 +7366,7 @@ var CDSP = function (_maptalks$Class) {
         return points;
     };
 
-    CDSP.prototype._getCoordsFromPoints = function _getCoordsFromPoints(points) {
+    MultiSuite.prototype._getCoordsFromPoints = function _getCoordsFromPoints(points) {
         if (!(points instanceof Array)) points = [points];
         var map = this._map;
         var zoom = map.getZoom();
@@ -7376,7 +7377,7 @@ var CDSP = function (_maptalks$Class) {
         return coords;
     };
 
-    CDSP.prototype._splitWithTargetMoreTwo = function _splitWithTargetMoreTwo(target) {
+    MultiSuite.prototype._splitWithTargetMoreTwo = function _splitWithTargetMoreTwo(target) {
         var coords0 = this._getSafeCoords()[0];
         var polyline = this._getPoint2dFromCoords(target);
         var forward = true;
@@ -7421,7 +7422,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._getTargetGap = function _getTargetGap(target, point0) {
+    MultiSuite.prototype._getTargetGap = function _getTargetGap(target, point0) {
         var coords = this._getSafeCoords(target);
         var polygon = this._getPoint2dFromCoords(this.geometry);
         var record = false;
@@ -7446,7 +7447,7 @@ var CDSP = function (_maptalks$Class) {
         return gap;
     };
 
-    CDSP.prototype._splitLineWithTargets = function _splitLineWithTargets(targets) {
+    MultiSuite.prototype._splitLineWithTargets = function _splitLineWithTargets(targets) {
         var _this16 = this;
 
         targets = this._getLineAvailTargets(targets);
@@ -7465,7 +7466,7 @@ var CDSP = function (_maptalks$Class) {
         this._result = result;
     };
 
-    CDSP.prototype._splitLineTargetBase = function _splitLineTargetBase(target) {
+    MultiSuite.prototype._splitLineTargetBase = function _splitLineTargetBase(target) {
         var _this17 = this;
 
         var polyline = this._getPoint2dFromCoords(target);
@@ -7501,7 +7502,7 @@ var CDSP = function (_maptalks$Class) {
         return result;
     };
 
-    CDSP.prototype._getLineAvailTargets = function _getLineAvailTargets(targets) {
+    MultiSuite.prototype._getLineAvailTargets = function _getLineAvailTargets(targets) {
         var _this18 = this;
 
         var avails = [];
@@ -7512,7 +7513,7 @@ var CDSP = function (_maptalks$Class) {
         return avails;
     };
 
-    CDSP.prototype._getLineAvailTarget = function _getLineAvailTarget(target) {
+    MultiSuite.prototype._getLineAvailTarget = function _getLineAvailTarget(target) {
         var lines = [];
         var coords = this._getSafeCoords(target);
         for (var i = 0; i < coords.length - 1; i++) {
@@ -7523,15 +7524,15 @@ var CDSP = function (_maptalks$Class) {
         return lines;
     };
 
-    return CDSP;
+    return MultiSuite;
 }(maptalks.Class);
 
-CDSP.mergeOptions(options);
+MultiSuite.mergeOptions(options);
 
-exports.CDSP = CDSP;
+exports.MultiSuite = MultiSuite;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-typeof console !== 'undefined' && console.log('maptalks.cdsp v0.1.0-alpha.1');
+typeof console !== 'undefined' && console.log('maptalks.multiSuite v0.1.0-beta.1');
 
 })));

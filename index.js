@@ -5,7 +5,7 @@ import flattenDeep from 'lodash/flattenDeep'
 
 const options = {}
 
-export class CDSP extends maptalks.Class {
+export class MultiSuite extends maptalks.Class {
     constructor(options) {
         super(options)
         this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
@@ -227,10 +227,11 @@ export class CDSP extends maptalks.Class {
         let coords = geo.getCoordinates()
         if (geo.options.numberOfShellPoints) {
             const { options } = geo
+            const { numberOfShellPoints } = options
             options.numberOfShellPoints = 300
             geo.setOptions(options)
             coords = [geo.getShell()]
-            options.numberOfShellPoints = 60
+            options.numberOfShellPoints = numberOfShellPoints || 60
             geo.setOptions(options)
         }
         return coords
@@ -246,7 +247,7 @@ export class CDSP extends maptalks.Class {
             }
             this._needRefreshSymbol = false
         }
-        if (geos && geos.length > 0 && !this._needRefreshSymbol) {
+        if (geos && geos.length > 0) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
             if (this._checkIsSameType(this.hitGeo) || notNeedSame) {
@@ -775,4 +776,4 @@ export class CDSP extends maptalks.Class {
     }
 }
 
-CDSP.mergeOptions(options)
+MultiSuite.mergeOptions(options)

@@ -10,7 +10,7 @@ const map = new maptalks.Map('map', {
     })
 })
 
-const cdmp = new maptalks.CDSP()
+const cdmp = new maptalks.MultiSuite()
 const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 layer.on('addGeo', () =>
     layer
