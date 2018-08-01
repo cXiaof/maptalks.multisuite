@@ -47,6 +47,31 @@ export class CDSP extends maptalks.Class {
         }
     }
 
+    fill(geometry, targets, fillAll) {
+        if (geometry instanceof maptalks.MultiPolygon) {
+            this._initialTaskWithGeo(geometry, 'fill')
+            if (fillAll) {
+                this._fillAll()
+                this.remove()
+            } else {
+                if (targets instanceof maptalks.Polygon) targets = [targets]
+                if (targets instanceof Array && targets.length > 0) {
+                    this._fillWithTargets(targets)
+                    this.remove()
+                } else {
+                    const coords0 = this.geometry.getCoordinates()[0]
+                    const symbol = this.geometry.getSymbol()
+                    symbol.polygonOpacity = 0
+                    coords0.forEach((coord, index) => {
+                        if (index > 0)
+                            new maptalks.Polygon([coords0[index]], { symbol }).addTo(this._tmpLayer)
+                    })
+                }
+            }
+            return this
+        }
+    }
+
     split(geometry, targets) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._initialTaskWithGeo(geometry, 'split')
@@ -62,16 +87,19 @@ export class CDSP extends maptalks.Class {
     submit(callback = () => false) {
         switch (this._task) {
             case 'combine':
-                this._submitCombine(callback)
+                this._submitCombine()
                 break
             case 'decompose':
-                this._submitDecompose(callback)
+                this._submitDecompose()
                 break
             case 'peel':
-                this._submitPeel(callback)
+                this._submitPeel()
+                break
+            case 'fill':
+                this._submitFill()
                 break
             case 'split':
-                this._submitSplit(callback)
+                this._submitSplit()
                 break
             default:
                 break
@@ -177,6 +205,9 @@ export class CDSP extends maptalks.Class {
                     if (!isEqual(coord, coordPeel)) geos.push(geo)
                 })
                 break
+            case 'fill':
+                geos = this._tmpLayer.identify(e.coordinate)
+                break
             case 'split':
                 const coordSplit = this._getSafeCoords()
                 this.layer.identify(e.coordinate).forEach((geo) => {
@@ -277,13 +308,12 @@ export class CDSP extends maptalks.Class {
             case 'decompose':
                 this._clickDecompose(e)
                 break
-            case 'peel':
-                this._clickPeel()
-                break
-            case 'split':
-                this._clickSplit()
-                break
             default:
+                if (this.hitGeo) {
+                    const coordHit = this._getSafeCoords(this.hitGeo)
+                    this._setChooseGeosExceptHit(coordHit)
+                    this._updateChooseGeos()
+                }
                 break
         }
     }
@@ -332,7 +362,7 @@ export class CDSP extends maptalks.Class {
         this._updateChooseGeos()
     }
 
-    _submitCombine(callback) {
+    _submitCombine() {
         this._compositWithTargets()
     }
 
@@ -385,7 +415,7 @@ export class CDSP extends maptalks.Class {
         this._result = combine
     }
 
-    _submitDecompose(callback) {
+    _submitDecompose() {
         this._decomposeWithTargets()
     }
 
@@ -409,7 +439,7 @@ export class CDSP extends maptalks.Class {
         this._compositResultGeo(geos)
     }
 
-    _peelWithTargets(targets) {
+    _peelWithTargets(targets = this._chooseGeos) {
         const geometry = this.geometry
         let arr = [this._getSafeCoords(geometry)[0]]
         this._deals = []
@@ -427,31 +457,47 @@ export class CDSP extends maptalks.Class {
         geometry.remove()
     }
 
-    _clickPeel() {
-        if (this.hitGeo) {
-            const coordHit = this._getSafeCoords(this.hitGeo)
-            this._setChooseGeosExceptHit(coordHit)
-            this._updateChooseGeos()
-        }
+    _submitPeel() {
+        this._peelWithTargets()
     }
 
-    _clickSplit() {
-        if (this.hitGeo) {
-            const coordHit = this._getSafeCoords(this.hitGeo)
-            this._setChooseGeosExceptHit(coordHit)
-            this._updateChooseGeos()
-        }
+    _submitFill() {
+        this._fillWithTargets()
     }
 
-    _submitPeel(callback) {
-        this._peelWithTargets(this._chooseGeos)
+    _submitSplit() {
+        this._splitWithTargets()
     }
 
-    _submitSplit(callback) {
-        this._splitWithTargets(this._chooseGeos)
+    _fillAll() {
+        const coords = this.geometry.getCoordinates()
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+        new maptalks.Polygon([coords[0][0]], { symbol, properties }).addTo(this.layer)
+        this.geometry.remove()
     }
 
-    _splitWithTargets(targets) {
+    _fillWithTargets(targets = this._chooseGeos) {
+        const symbol = this.geometry.getSymbol()
+        const properties = this.geometry.getProperties()
+
+        let coordsStr = []
+        this._deals = []
+        targets.forEach((target) => {
+            const coordsTarget = JSON.stringify(target.getCoordinates()[0])
+            coordsStr.push(coordsTarget)
+            this._deals.push(target.setSymbol(symbol).copy())
+        })
+
+        let coords = []
+        this.geometry.getCoordinates()[0].forEach((coord) => {
+            if (!coordsStr.includes(JSON.stringify(coord))) coords.push(coord)
+        })
+        this._result = new maptalks.MultiPolygon([coords], { symbol, properties }).addTo(this.layer)
+        this.geometry.remove()
+    }
+
+    _splitWithTargets(targets = this._chooseGeos) {
         this._deals = this.geometry.copy()
         if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets)
         if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets)

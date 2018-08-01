@@ -91,6 +91,11 @@ const getOptions = (geometry) => {
             },
             '-',
             {
+                item: 'fill',
+                click: () => cdmp.fill(geometry)
+            },
+            '-',
+            {
                 item: 'submit',
                 click: () => cdmp.submit((result, deals) => console.log(result, deals))
             },

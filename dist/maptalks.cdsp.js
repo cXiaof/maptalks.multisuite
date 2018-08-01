@@ -6726,6 +6726,32 @@ var CDSP = function (_maptalks$Class) {
         }
     };
 
+    CDSP.prototype.fill = function fill(geometry, targets, fillAll) {
+        var _this2 = this;
+
+        if (geometry instanceof maptalks.MultiPolygon) {
+            this._initialTaskWithGeo(geometry, 'fill');
+            if (fillAll) {
+                this._fillAll();
+                this.remove();
+            } else {
+                if (targets instanceof maptalks.Polygon) targets = [targets];
+                if (targets instanceof Array && targets.length > 0) {
+                    this._fillWithTargets(targets);
+                    this.remove();
+                } else {
+                    var coords0 = this.geometry.getCoordinates()[0];
+                    var symbol = this.geometry.getSymbol();
+                    symbol.polygonOpacity = 0;
+                    coords0.forEach(function (coord, index) {
+                        if (index > 0) new maptalks.Polygon([coords0[index]], { symbol: symbol }).addTo(_this2._tmpLayer);
+                    });
+                }
+            }
+            return this;
+        }
+    };
+
     CDSP.prototype.split = function split(geometry, targets) {
         if (geometry instanceof maptalks.Polygon || geometry instanceof maptalks.LineString) {
             this._initialTaskWithGeo(geometry, 'split');
@@ -6745,16 +6771,19 @@ var CDSP = function (_maptalks$Class) {
 
         switch (this._task) {
             case 'combine':
-                this._submitCombine(callback);
+                this._submitCombine();
                 break;
             case 'decompose':
-                this._submitDecompose(callback);
+                this._submitDecompose();
                 break;
             case 'peel':
-                this._submitPeel(callback);
+                this._submitPeel();
+                break;
+            case 'fill':
+                this._submitFill();
                 break;
             case 'split':
-                this._submitSplit(callback);
+                this._submitSplit();
                 break;
             default:
                 break;
@@ -6790,7 +6819,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
-        var _this2 = this;
+        var _this3 = this;
 
         switch (this._task) {
             case 'combine':
@@ -6798,7 +6827,7 @@ var CDSP = function (_maptalks$Class) {
                 break;
             case 'decompose':
                 geometry._geometries.forEach(function (geo) {
-                    return geo.copy().addTo(_this2._tmpLayer);
+                    return geo.copy().addTo(_this3._tmpLayer);
                 });
                 this._chooseGeos = this._tmpLayer.getGeometries();
                 break;
@@ -6830,15 +6859,15 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._registerMapEvents = function _registerMapEvents() {
-        var _this3 = this;
+        var _this4 = this;
 
         if (!this._mousemove) {
             var _map = this._map;
             this._mousemove = function (e) {
-                return _this3._mousemoveEvents(e);
+                return _this4._mousemoveEvents(e);
             };
             this._click = function (e) {
-                return _this3._clickEvents(e);
+                return _this4._clickEvents(e);
             };
             _map.on('mousemove', this._mousemove, this);
             _map.on('click', this._click, this);
@@ -6854,7 +6883,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var _this4 = this;
+        var _this5 = this;
 
         var geos = [];
         var notNeedSame = false;
@@ -6868,14 +6897,17 @@ var CDSP = function (_maptalks$Class) {
             case 'peel':
                 var coordPeel = this._getSafeCoords();
                 this.layer.identify(e.coordinate).forEach(function (geo) {
-                    var coord = _this4._getSafeCoords(geo);
+                    var coord = _this5._getSafeCoords(geo);
                     if (!isEqual_1(coord, coordPeel)) geos.push(geo);
                 });
+                break;
+            case 'fill':
+                geos = this._tmpLayer.identify(e.coordinate);
                 break;
             case 'split':
                 var coordSplit = this._getSafeCoords();
                 this.layer.identify(e.coordinate).forEach(function (geo) {
-                    var coord = _this4._getSafeCoords(geo);
+                    var coord = _this5._getSafeCoords(geo);
                     if (!isEqual_1(coord, coordSplit) && geo instanceof maptalks.LineString) geos.push(geo);
                 });
                 notNeedSame = true;
@@ -6966,13 +6998,12 @@ var CDSP = function (_maptalks$Class) {
             case 'decompose':
                 this._clickDecompose(e);
                 break;
-            case 'peel':
-                this._clickPeel();
-                break;
-            case 'split':
-                this._clickSplit();
-                break;
             default:
+                if (this.hitGeo) {
+                    var coordHit = this._getSafeCoords(this.hitGeo);
+                    this._setChooseGeosExceptHit(coordHit);
+                    this._updateChooseGeos();
+                }
                 break;
         }
     };
@@ -6988,24 +7019,24 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit, hasTmp) {
-        var _this5 = this;
+        var _this6 = this;
 
         var chooseNext = [];
         this._chooseGeos.forEach(function (geo) {
-            var coord = _this5._getSafeCoords(geo);
+            var coord = _this6._getSafeCoords(geo);
             if (!isEqual_1(coordHit, coord)) chooseNext.push(geo);
         });
         if (!hasTmp && chooseNext.length === this._chooseGeos.length) this._chooseGeos.push(this.hitGeo);else this._chooseGeos = chooseNext;
     };
 
     CDSP.prototype._updateChooseGeos = function _updateChooseGeos() {
-        var _this6 = this;
+        var _this7 = this;
 
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            var chooseSymbol = _this6._getSymbolOrDefault(geo, 'Choose');
-            _this6._copyGeoUpdateSymbol(geo, chooseSymbol);
+            var chooseSymbol = _this7._getSymbolOrDefault(geo, 'Choose');
+            _this7._copyGeoUpdateSymbol(geo, chooseSymbol);
         });
     };
 
@@ -7023,25 +7054,25 @@ var CDSP = function (_maptalks$Class) {
         this._updateChooseGeos();
     };
 
-    CDSP.prototype._submitCombine = function _submitCombine(callback) {
+    CDSP.prototype._submitCombine = function _submitCombine() {
         this._compositWithTargets();
     };
 
     CDSP.prototype._compositWithTargets = function _compositWithTargets() {
-        var _this7 = this;
+        var _this8 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
         this._deals = [];
         targets.forEach(function (geo) {
-            return _this7._deals.push(geo.copy());
+            return _this8._deals.push(geo.copy());
         });
 
         var geosCoords = this._getGeoStringifyCoords(targets);
 
         var geos = [];
         this.layer.getGeometries().forEach(function (geo) {
-            var coord = _this7._getGeoStringifyCoords(geo);
+            var coord = _this8._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) {
                 if (geo.type.startsWith('Multi')) geo._geometries.forEach(function (item) {
                     return geos.push(item.copy());
@@ -7053,12 +7084,12 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
-        var _this8 = this;
+        var _this9 = this;
 
         if (geo instanceof Array) {
             var arr = [];
             geo.forEach(function (item) {
-                return arr.push(JSON.stringify(_this8._getSafeCoords(item)));
+                return arr.push(JSON.stringify(_this9._getSafeCoords(item)));
             });
             return arr;
         }
@@ -7087,44 +7118,46 @@ var CDSP = function (_maptalks$Class) {
         this._result = combine;
     };
 
-    CDSP.prototype._submitDecompose = function _submitDecompose(callback) {
+    CDSP.prototype._submitDecompose = function _submitDecompose() {
         this._decomposeWithTargets();
     };
 
     CDSP.prototype._decomposeWithTargets = function _decomposeWithTargets() {
-        var _this9 = this;
+        var _this10 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseLayer.getGeometries();
 
         var geosCoords = [];
         targets.forEach(function (geo) {
-            if (geo.getId() !== '_hit') geosCoords.push(_this9._getGeoStringifyCoords(geo));
+            if (geo.getId() !== '_hit') geosCoords.push(_this10._getGeoStringifyCoords(geo));
         });
 
         var geos = [];
         this._deals = [];
         this._tmpLayer.getGeometries().forEach(function (geo) {
-            var coord = _this9._getGeoStringifyCoords(geo);
+            var coord = _this10._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) geos.push(geo.copy());else {
-                geo = geo.copy().addTo(_this9.layer);
-                _this9._deals.push(geo);
+                geo = geo.copy().addTo(_this10.layer);
+                _this10._deals.push(geo);
             }
         });
         this.geometry.remove();
         this._compositResultGeo(geos);
     };
 
-    CDSP.prototype._peelWithTargets = function _peelWithTargets(targets) {
-        var _this10 = this;
+    CDSP.prototype._peelWithTargets = function _peelWithTargets() {
+        var _this11 = this;
+
+        var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
         var geometry = this.geometry;
         var arr = [this._getSafeCoords(geometry)[0]];
         this._deals = [];
         targets.forEach(function (geo) {
             if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
-                return arr.push(_this10._getSafeCoords(item)[0]);
-            });else arr.push(_this10._getSafeCoords(geo)[0]);
-            _this10._deals.push(geo.copy());
+                return arr.push(_this11._getSafeCoords(item)[0]);
+            });else arr.push(_this11._getSafeCoords(geo)[0]);
+            _this11._deals.push(geo.copy());
             geo.remove();
         });
         this._result = new maptalks.MultiPolygon([arr], {
@@ -7134,38 +7167,60 @@ var CDSP = function (_maptalks$Class) {
         geometry.remove();
     };
 
-    CDSP.prototype._clickPeel = function _clickPeel() {
-        if (this.hitGeo) {
-            var coordHit = this._getSafeCoords(this.hitGeo);
-            this._setChooseGeosExceptHit(coordHit);
-            this._updateChooseGeos();
-        }
+    CDSP.prototype._submitPeel = function _submitPeel() {
+        this._peelWithTargets();
     };
 
-    CDSP.prototype._clickSplit = function _clickSplit() {
-        if (this.hitGeo) {
-            var coordHit = this._getSafeCoords(this.hitGeo);
-            this._setChooseGeosExceptHit(coordHit);
-            this._updateChooseGeos();
-        }
+    CDSP.prototype._submitFill = function _submitFill() {
+        this._fillWithTargets();
     };
 
-    CDSP.prototype._submitPeel = function _submitPeel(callback) {
-        this._peelWithTargets(this._chooseGeos);
+    CDSP.prototype._submitSplit = function _submitSplit() {
+        this._splitWithTargets();
     };
 
-    CDSP.prototype._submitSplit = function _submitSplit(callback) {
-        this._splitWithTargets(this._chooseGeos);
+    CDSP.prototype._fillAll = function _fillAll() {
+        var coords = this.geometry.getCoordinates();
+        var symbol = this.geometry.getSymbol();
+        var properties = this.geometry.getProperties();
+        new maptalks.Polygon([coords[0][0]], { symbol: symbol, properties: properties }).addTo(this.layer);
+        this.geometry.remove();
     };
 
-    CDSP.prototype._splitWithTargets = function _splitWithTargets(targets) {
+    CDSP.prototype._fillWithTargets = function _fillWithTargets() {
+        var _this12 = this;
+
+        var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
+
+        var symbol = this.geometry.getSymbol();
+        var properties = this.geometry.getProperties();
+
+        var coordsStr = [];
+        this._deals = [];
+        targets.forEach(function (target) {
+            var coordsTarget = JSON.stringify(target.getCoordinates()[0]);
+            coordsStr.push(coordsTarget);
+            _this12._deals.push(target.setSymbol(symbol).copy());
+        });
+
+        var coords = [];
+        this.geometry.getCoordinates()[0].forEach(function (coord) {
+            if (!coordsStr.includes(JSON.stringify(coord))) coords.push(coord);
+        });
+        this._result = new maptalks.MultiPolygon([coords], { symbol: symbol, properties: properties }).addTo(this.layer);
+        this.geometry.remove();
+    };
+
+    CDSP.prototype._splitWithTargets = function _splitWithTargets() {
+        var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
+
         this._deals = this.geometry.copy();
         if (this.geometry instanceof maptalks.Polygon) this._splitPolygonWithTargets(targets);
         if (this.geometry instanceof maptalks.LineString) this._splitLineWithTargets(targets);
     };
 
     CDSP.prototype._splitPolygonWithTargets = function _splitPolygonWithTargets(targets) {
-        var _this11 = this;
+        var _this13 = this;
 
         var result = void 0;
         targets = this._getPolygonAvailTargets(targets);
@@ -7173,22 +7228,22 @@ var CDSP = function (_maptalks$Class) {
             if (result) {
                 var results = [];
                 result.forEach(function (geo) {
-                    _this11.geometry = geo;
-                    results.push.apply(results, _this11._splitPolygonTargetBase(target));
+                    _this13.geometry = geo;
+                    results.push.apply(results, _this13._splitPolygonTargetBase(target));
                 });
                 result = results;
-            } else result = _this11._splitPolygonTargetBase(target);
+            } else result = _this13._splitPolygonTargetBase(target);
             target.remove();
         });
         this._result = result;
     };
 
     CDSP.prototype._getPolygonAvailTargets = function _getPolygonAvailTargets(targets) {
-        var _this12 = this;
+        var _this14 = this;
 
         var avails = [];
         targets.forEach(function (target) {
-            avails.push.apply(avails, _this12._getPolygonAvailTarget(target));
+            avails.push.apply(avails, _this14._getPolygonAvailTarget(target));
             target.remove();
         });
         return avails;
@@ -7254,7 +7309,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitWithTargetCommon = function _splitWithTargetCommon(target) {
-        var _this13 = this;
+        var _this15 = this;
 
         var coords0 = this._getSafeCoords()[0];
         var polyline = this._getPoint2dFromCoords(target);
@@ -7293,7 +7348,7 @@ var CDSP = function (_maptalks$Class) {
         var geo = new maptalks.Polygon(main, { symbol: symbol, properties: properties }).addTo(this.layer);
         result.push(geo);
         children.forEach(function (childCoord) {
-            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this13.layer);
+            geo = new maptalks.Polygon(childCoord, { symbol: symbol, properties: properties }).addTo(_this15.layer);
             result.push(geo);
         });
         return result;
@@ -7392,7 +7447,7 @@ var CDSP = function (_maptalks$Class) {
     };
 
     CDSP.prototype._splitLineWithTargets = function _splitLineWithTargets(targets) {
-        var _this14 = this;
+        var _this16 = this;
 
         targets = this._getLineAvailTargets(targets);
         var result = void 0;
@@ -7400,18 +7455,18 @@ var CDSP = function (_maptalks$Class) {
             if (result) {
                 var results = [];
                 result.forEach(function (geo) {
-                    _this14.geometry = geo;
-                    results.push.apply(results, _this14._splitLineTargetBase(target));
+                    _this16.geometry = geo;
+                    results.push.apply(results, _this16._splitLineTargetBase(target));
                 });
                 result = results;
-            } else result = _this14._splitLineTargetBase(target);
+            } else result = _this16._splitLineTargetBase(target);
             target.remove();
         });
         this._result = result;
     };
 
     CDSP.prototype._splitLineTargetBase = function _splitLineTargetBase(target) {
-        var _this15 = this;
+        var _this17 = this;
 
         var polyline = this._getPoint2dFromCoords(target);
         var coords = this._getSafeCoords();
@@ -7440,18 +7495,18 @@ var CDSP = function (_maptalks$Class) {
         }
         var result = [];
         lines.forEach(function (line) {
-            return result.push(new maptalks.LineString(line).addTo(_this15.layer));
+            return result.push(new maptalks.LineString(line).addTo(_this17.layer));
         });
         this.geometry.remove();
         return result;
     };
 
     CDSP.prototype._getLineAvailTargets = function _getLineAvailTargets(targets) {
-        var _this16 = this;
+        var _this18 = this;
 
         var avails = [];
         targets.forEach(function (target) {
-            avails.push.apply(avails, _this16._getLineAvailTarget(target));
+            avails.push.apply(avails, _this18._getLineAvailTarget(target));
             target.remove();
         });
         return avails;
