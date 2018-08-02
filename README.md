@@ -6,6 +6,10 @@ An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.
 
 ### [DEMO](https://cxiaof.github.io/maptalks.multiSuite/demo/index.html)
 
+## Tips
+
+Combine <-> Decompose with Circle also has bug of maptalks, see the issue(https://github.com/maptalks/maptalks.js/issues/725)
+
 ## Install
 
 -   Install with npm: `npm install maptalks.multiSuite`.

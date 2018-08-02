@@ -81,11 +81,6 @@ const getOptions = (geometry) => {
             },
             '-',
             {
-                item: 'split',
-                click: () => ms.split(geometry)
-            },
-            '-',
-            {
                 item: 'peel',
                 click: () => ms.peel(geometry)
             },
