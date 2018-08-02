@@ -20,17 +20,31 @@ As a plugin, `maptalks.multiSuite` must be loaded after `maptalks.js` in browser
 <script type="text/javascript" src="https://unpkg.com/maptalks/dist/maptalks.min.js"></script>
 <script type="text/javascript" src="https://unpkg.com/maptalks.multiSuite/dist/maptalks.multiSuite.min.js"></script>
 <script>
+    // new MultiSuite and layer
+    const ms = new maptalks.MultiSuite()
+    const layer = new maptalks.VectorLayer('v').addTo(map)
 
+    // use MultiSuite API, targets is not necessary parameters and if no targets user will choose geometry on the map
+    // get details in API Reference
 </script>
 ```
 
 ## API Reference
 
 ```javascript
-new maptalks.MultiSuite(options)
+new maptalks.MultiSuite()
 ```
 
--   options **Object** options
+-   options
+    -   none
+
+`combine(geometry, targets)`
+`decompose(geometry, targets)`
+`peel(geometry, targets)`
+`fill(geometry, targets, fillAll)` if fillAll, the result is An Polygon, else is always MultiPolygon
+`submit(callback)` callback can get two attr, the result and deals which be remove in task
+`cancel()`
+`remove()`
 
 ## Contributing
 

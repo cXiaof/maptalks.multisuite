@@ -10,7 +10,7 @@ const map = new maptalks.Map('map', {
     })
 })
 
-const cdmp = new maptalks.MultiSuite()
+const ms = new maptalks.MultiSuite()
 const layer = new maptalks.VectorLayer('sketchPad').addTo(map)
 layer.on('addGeo', () =>
     layer
@@ -61,7 +61,7 @@ const toolbar = new maptalks.control.Toolbar({
             item: 'Clear',
             click: () => {
                 layer.clear()
-                cdmp.cancel()
+                ms.cancel()
             }
         }
     ]
@@ -72,37 +72,37 @@ const getOptions = (geometry) => {
         items: [
             {
                 item: 'combine',
-                click: () => cdmp.combine(geometry)
+                click: () => ms.combine(geometry)
             },
             '-',
             {
                 item: 'decompose',
-                click: () => cdmp.decompose(geometry)
+                click: () => ms.decompose(geometry)
             },
             '-',
             {
                 item: 'split',
-                click: () => cdmp.split(geometry)
+                click: () => ms.split(geometry)
             },
             '-',
             {
                 item: 'peel',
-                click: () => cdmp.peel(geometry)
+                click: () => ms.peel(geometry)
             },
             '-',
             {
                 item: 'fill',
-                click: () => cdmp.fill(geometry)
+                click: () => ms.fill(geometry)
             },
             '-',
             {
                 item: 'submit',
-                click: () => cdmp.submit((result, deals) => console.log(result, deals))
+                click: () => ms.submit((result, deals) => console.log(result, deals))
             },
             '-',
             {
                 item: 'cancel',
-                click: () => cdmp.cancel()
+                click: () => ms.cancel()
             }
         ]
     }
