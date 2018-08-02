@@ -8,7 +8,7 @@ An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.
 
 ## Tips
 
-Combine <-> Decompose with Circle also has bug of maptalks, see the issue(https://github.com/maptalks/maptalks.js/issues/725)
+Combine <-> Decompose with Circle also has bug of maptalks, see the [issue](https://github.com/maptalks/maptalks.js/issues/725)
 
 ## Install
 
