@@ -1,10 +1,10 @@
-# maptalks.multiSuite
+# maptalks.multisuite
 
 An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.
 
 ## Examples
 
-### [DEMO](https://cxiaof.github.io/maptalks.multiSuite/demo/index.html)
+### [DEMO](https://cxiaof.github.io/maptalks.multisuite/demo/index.html)
 
 ## Tips
 
@@ -12,17 +12,17 @@ Combine <-> Decompose with Circle also has bug of maptalks, see the issue(https:
 
 ## Install
 
--   Install with npm: `npm install maptalks.multiSuite`.
--   Download from [dist directory](https://github.com/cXiaof/maptalks.multiSuite/tree/master/dist).
--   Use unpkg CDN: `https://unpkg.com/maptalks.multiSuite/dist/maptalks.multiSuite.min.js`
+-   Install with npm: `npm install maptalks.multisuite`.
+-   Download from [dist directory](https://github.com/cXiaof/maptalks.multisuite/tree/master/dist).
+-   Use unpkg CDN: `https://unpkg.com/maptalks.multisuite/dist/maptalks.multisuite.min.js`
 
 ## Usage
 
-As a plugin, `maptalks.multiSuite` must be loaded after `maptalks.js` in browsers. You can also use `'import { MultiSuite } from "maptalks.multiSuite"` when developing with webpack.
+As a plugin, `maptalks.multisuite` must be loaded after `maptalks.js` in browsers. You can also use `'import { MultiSuite } from "maptalks.multisuite"` when developing with webpack.
 
 ```html
 <script type="text/javascript" src="https://unpkg.com/maptalks/dist/maptalks.min.js"></script>
-<script type="text/javascript" src="https://unpkg.com/maptalks.multiSuite/dist/maptalks.multiSuite.min.js"></script>
+<script type="text/javascript" src="https://unpkg.com/maptalks.multisuite/dist/maptalks.multisuite.min.js"></script>
 <script>
     // new MultiSuite and layer
     const ms = new maptalks.MultiSuite()

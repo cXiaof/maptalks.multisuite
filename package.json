@@ -1,19 +1,19 @@
 {
-  "name": "maptalks.multiSuite",
+  "name": "maptalks.multisuite",
   "version": "0.1.0-beta.1",
   "description": "An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.",
   "license": "MIT",
   "author": "cXiaof",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cXiaof/maptalks.multiSuite.git"
+    "url": "https://github.com/cXiaof/maptalks.multisuite.git"
   },
-  "main": "dist/maptalks.multiSuite.min.js",
-  "keywords": ["maptalks", "multiSuite", "combine", "decompose", "split", "peel"],
+  "main": "dist/maptalks.multisuite.min.js",
+  "keywords": ["maptalks", "multisuite", "combine", "decompose", "split", "peel"],
   "bugs": {
-    "url": "https://github.com/cXiaof/maptalks.multiSuite/issues"
+    "url": "https://github.com/cXiaof/maptalks.multisuite/issues"
   },
-  "homepage": "https://github.com/cXiaof/maptalks.multiSuite",
+  "homepage": "https://github.com/cXiaof/maptalks.multisuite",
   "scripts": {
     "prepublish": "gulp minify",
     "b": "gulp minify",
