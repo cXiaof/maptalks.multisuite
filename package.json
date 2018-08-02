@@ -9,7 +9,7 @@
     "url": "https://github.com/cXiaof/maptalks.multisuite.git"
   },
   "main": "dist/maptalks.multisuite.min.js",
-  "keywords": ["maptalks", "multisuite", "combine", "decompose", "split", "peel"],
+  "keywords": ["maptalks", "multisuite", "combine", "decompose", "peel", "fill"],
   "bugs": {
     "url": "https://github.com/cXiaof/maptalks.multisuite/issues"
   },
