@@ -2826,7 +2826,7 @@ var MultiSuite = function (_maptalks$Class) {
             default:
                 break;
         }
-        callback(this._result, this._deals);
+        callback(this._result, this._deals, this._task);
         this.remove();
     };
 

@@ -88,7 +88,7 @@ export class MultiSuite extends maptalks.Class {
             default:
                 break
         }
-        callback(this._result, this._deals)
+        callback(this._result, this._deals, this._task)
         this.remove()
     }
 
