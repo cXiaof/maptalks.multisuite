@@ -1,5 +1,5 @@
 /*!
- * maptalks.multisuite v0.1.0-beta.1
+ * maptalks.multisuite v0.1.0-beta.2
  * LICENSE : MIT
  * (c) 2016-2018 maptalks.org
  */
@@ -3250,4 +3250,4 @@ MultiSuite.mergeOptions(options);
 
 export { MultiSuite };
 
-typeof console !== 'undefined' && console.log('maptalks.multisuite v0.1.0-beta.1');
+typeof console !== 'undefined' && console.log('maptalks.multisuite v0.1.0-beta.2');
