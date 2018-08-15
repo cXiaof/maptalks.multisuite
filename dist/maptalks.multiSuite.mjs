@@ -3182,19 +3182,21 @@ var MultiSuite = function (_maptalks$Class) {
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
         var geometry = this.geometry;
-        var arr = [this._getSafeCoords(geometry)[0]];
-        this._deals = [];
-        targets.forEach(function (geo) {
-            if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
-                return arr.push(_this11._getSafeCoords(item)[0]);
-            });else arr.push(_this11._getSafeCoords(geo)[0]);
-            _this11._deals.push(geo.copy());
-            geo.remove();
-        });
-        this._result = new maptalks.MultiPolygon([arr], {
-            symbol: geometry.getSymbol(),
-            properties: geometry.getProperties()
-        }).addTo(geometry._layer);
+        if (targets.length > 0) {
+            var arr = [this._getSafeCoords(geometry)[0]];
+            this._deals = [];
+            targets.forEach(function (geo) {
+                if (geo instanceof maptalks.MultiPolygon) geo._geometries.forEach(function (item) {
+                    return arr.push(_this11._getSafeCoords(item)[0]);
+                });else arr.push(_this11._getSafeCoords(geo)[0]);
+                _this11._deals.push(geo.copy());
+                geo.remove();
+            });
+            this._result = new maptalks.MultiPolygon([arr], {
+                symbol: geometry.getSymbol(),
+                properties: geometry.getProperties()
+            }).addTo(geometry._layer);
+        } else this._result = geometry.copy().addTo(geometry._layer);
         geometry.remove();
     };
 
@@ -3210,8 +3212,9 @@ var MultiSuite = function (_maptalks$Class) {
         var coords = this.geometry.getCoordinates();
         var symbol = this.geometry.getSymbol();
         var properties = this.geometry.getProperties();
-        new maptalks.Polygon([coords[0][0]], { symbol: symbol, properties: properties }).addTo(this.layer);
+        var result = new maptalks.Polygon([coords[0][0]], { symbol: symbol, properties: properties }).addTo(this.layer);
         this.geometry.remove();
+        return result;
     };
 
     MultiSuite.prototype._fillWithTargets = function _fillWithTargets() {
@@ -3234,8 +3237,10 @@ var MultiSuite = function (_maptalks$Class) {
         this.geometry.getCoordinates()[0].forEach(function (coord) {
             if (!coordsStr.includes(JSON.stringify(coord))) coords.push(coord);
         });
-        this._result = new maptalks.MultiPolygon([coords], { symbol: symbol, properties: properties }).addTo(this.layer);
-        this.geometry.remove();
+        if (coords.length === 1) this._result = this._fillAll();else {
+            this._result = new maptalks.MultiPolygon([coords], { symbol: symbol, properties: properties }).addTo(this.layer);
+            this.geometry.remove();
+        }
     };
 
     return MultiSuite;

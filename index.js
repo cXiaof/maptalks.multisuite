@@ -419,19 +419,21 @@ export class MultiSuite extends maptalks.Class {
 
     _peelWithTargets(targets = this._chooseGeos) {
         const geometry = this.geometry
-        let arr = [this._getSafeCoords(geometry)[0]]
-        this._deals = []
-        targets.forEach((geo) => {
-            if (geo instanceof maptalks.MultiPolygon)
-                geo._geometries.forEach((item) => arr.push(this._getSafeCoords(item)[0]))
-            else arr.push(this._getSafeCoords(geo)[0])
-            this._deals.push(geo.copy())
-            geo.remove()
-        })
-        this._result = new maptalks.MultiPolygon([arr], {
-            symbol: geometry.getSymbol(),
-            properties: geometry.getProperties()
-        }).addTo(geometry._layer)
+        if (targets.length > 0) {
+            let arr = [this._getSafeCoords(geometry)[0]]
+            this._deals = []
+            targets.forEach((geo) => {
+                if (geo instanceof maptalks.MultiPolygon)
+                    geo._geometries.forEach((item) => arr.push(this._getSafeCoords(item)[0]))
+                else arr.push(this._getSafeCoords(geo)[0])
+                this._deals.push(geo.copy())
+                geo.remove()
+            })
+            this._result = new maptalks.MultiPolygon([arr], {
+                symbol: geometry.getSymbol(),
+                properties: geometry.getProperties()
+            }).addTo(geometry._layer)
+        } else this._result = geometry.copy().addTo(geometry._layer)
         geometry.remove()
     }
 
@@ -447,8 +449,11 @@ export class MultiSuite extends maptalks.Class {
         const coords = this.geometry.getCoordinates()
         const symbol = this.geometry.getSymbol()
         const properties = this.geometry.getProperties()
-        new maptalks.Polygon([coords[0][0]], { symbol, properties }).addTo(this.layer)
+        const result = new maptalks.Polygon([coords[0][0]], { symbol, properties }).addTo(
+            this.layer
+        )
         this.geometry.remove()
+        return result
     }
 
     _fillWithTargets(targets = this._chooseGeos) {
@@ -467,8 +472,13 @@ export class MultiSuite extends maptalks.Class {
         this.geometry.getCoordinates()[0].forEach((coord) => {
             if (!coordsStr.includes(JSON.stringify(coord))) coords.push(coord)
         })
-        this._result = new maptalks.MultiPolygon([coords], { symbol, properties }).addTo(this.layer)
-        this.geometry.remove()
+        if (coords.length === 1) this._result = this._fillAll()
+        else {
+            this._result = new maptalks.MultiPolygon([coords], { symbol, properties }).addTo(
+                this.layer
+            )
+            this.geometry.remove()
+        }
     }
 }
 
