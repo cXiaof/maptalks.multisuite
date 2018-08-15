@@ -3138,7 +3138,7 @@ var MultiSuite = function (_maptalks$Class) {
 
         if (!length || length === 0) return null;
         var combine = void 0;
-        if (geos.length > 0) switch (geos[0].type) {
+        if (length > 1) switch (geos[0].type) {
             case 'Point':
                 combine = new maptalks.MultiPoint(geos);
                 break;

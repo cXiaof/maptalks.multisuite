@@ -374,7 +374,7 @@ export class MultiSuite extends maptalks.Class {
         const { length } = geos
         if (!length || length === 0) return null
         let combine
-        if (geos.length > 0)
+        if (length > 1)
             switch (geos[0].type) {
                 case 'Point':
                     combine = new maptalks.MultiPoint(geos)
