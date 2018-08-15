@@ -374,17 +374,19 @@ export class MultiSuite extends maptalks.Class {
         const { length } = geos
         if (!length || length === 0) return null
         let combine
-        switch (geos[0].type) {
-            case 'Point':
-                combine = new maptalks.MultiPoint(geos)
-                break
-            case 'LineString':
-                combine = new maptalks.MultiLineString(geos)
-                break
-            default:
-                combine = new maptalks.MultiPolygon(geos)
-                break
-        }
+        if (geos.length > 0)
+            switch (geos[0].type) {
+                case 'Point':
+                    combine = new maptalks.MultiPoint(geos)
+                    break
+                case 'LineString':
+                    combine = new maptalks.MultiLineString(geos)
+                    break
+                default:
+                    combine = new maptalks.MultiPolygon(geos)
+                    break
+            }
+        else combine = geos[0].copy()
         combine.setSymbol(this.geometry.getSymbol())
         combine.setProperties(this.geometry.getProperties())
         combine.addTo(this.layer)

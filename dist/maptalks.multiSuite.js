@@ -3138,7 +3138,7 @@ var MultiSuite = function (_maptalks$Class) {
 
         if (!length || length === 0) return null;
         var combine = void 0;
-        switch (geos[0].type) {
+        if (geos.length > 0) switch (geos[0].type) {
             case 'Point':
                 combine = new maptalks.MultiPoint(geos);
                 break;
@@ -3148,7 +3148,7 @@ var MultiSuite = function (_maptalks$Class) {
             default:
                 combine = new maptalks.MultiPolygon(geos);
                 break;
-        }
+        } else combine = geos[0].copy();
         combine.setSymbol(this.geometry.getSymbol());
         combine.setProperties(this.geometry.getProperties());
         combine.addTo(this.layer);
