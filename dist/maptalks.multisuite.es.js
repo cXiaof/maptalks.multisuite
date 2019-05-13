@@ -1,5 +1,5 @@
 /*!
- * maptalks.multisuite v0.1.0
+ * maptalks.multisuite v0.1.0-beta.3
  * LICENSE : MIT
  * (c) 2016-2019 maptalks.org
  */
@@ -3375,6 +3375,17 @@ var MultiSuite = function (_maptalks$Class) {
         _this._chooseGeos = [];
         _this._colorHit = '#ffa400';
         _this._colorChoose = '#00bcd4';
+        _this._markerStyleDefault = {
+            markerType: 'path',
+            markerPath: [{
+                path: 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
+                fill: '#DE3333'
+            }],
+            markerPathWidth: 16,
+            markerPathHeight: 23,
+            markerWidth: 24,
+            markerHeight: 34
+        };
         return _this;
     }
 
@@ -3459,10 +3470,12 @@ var MultiSuite = function (_maptalks$Class) {
         }
         callback(this._result, this._deals, this._task);
         this.remove();
+        return this;
     };
 
     MultiSuite.prototype.cancel = function cancel() {
         this.remove();
+        return this;
     };
 
     MultiSuite.prototype.remove = function remove() {
@@ -3476,13 +3489,11 @@ var MultiSuite = function (_maptalks$Class) {
         delete this._task;
         delete this._tmpLayer;
         delete this._chooseLayer;
-        delete this._mousemove;
-        delete this._click;
-        delete this._dblclick;
+        return this;
     };
 
     MultiSuite.prototype._initialTaskWithGeo = function _initialTaskWithGeo(geometry, task) {
-        this._insureSafeTask();
+        if (this.geometry) this.remove();
         this._task = task;
         this._savePrivateGeometry(geometry);
     };
@@ -3506,10 +3517,6 @@ var MultiSuite = function (_maptalks$Class) {
         this._updateChooseGeos();
     };
 
-    MultiSuite.prototype._insureSafeTask = function _insureSafeTask() {
-        if (this.geometry) this.remove();
-    };
-
     MultiSuite.prototype._savePrivateGeometry = function _savePrivateGeometry(geometry) {
         this.geometry = geometry;
         this.layer = geometry.getLayer();
@@ -3520,23 +3527,20 @@ var MultiSuite = function (_maptalks$Class) {
         if (this._chooseLayer) this.remove();
         if (map._map_tool && map._map_tool instanceof maptalks.DrawTool) map._map_tool.disable();
         this._map = map;
-        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP).addTo(map).bringToFront();
-        this._chooseLayer = new maptalks.VectorLayer(this._layerName).addTo(map).bringToFront();
+        this._tmpLayer = this._newVectorLayerToFront(this._layerTMP);
+        this._chooseLayer = this._newVectorLayerToFront(this._layerName);
         this._registerMapEvents();
-        return this;
+    };
+
+    MultiSuite.prototype._newVectorLayerToFront = function _newVectorLayerToFront(name) {
+        return new maptalks.VectorLayer(name).addTo(this._map).bringToFront();
     };
 
     MultiSuite.prototype._registerMapEvents = function _registerMapEvents() {
-        var _this4 = this;
-
         if (!this._mousemove) {
             var map = this._map;
-            this._mousemove = function (e) {
-                return _this4._mousemoveEvents(e);
-            };
-            this._click = function (e) {
-                return _this4._clickEvents(e);
-            };
+            this._mousemove = this._mousemoveEvents.bind(this);
+            this._click = this._clickEvents.bind(this);
             map.on('mousemove', this._mousemove, this);
             map.on('click', this._click, this);
         }
@@ -3548,13 +3552,14 @@ var MultiSuite = function (_maptalks$Class) {
             map.off('mousemove', this._mousemove, this);
             map.off('click', this._click, this);
         }
+        delete this._mousemove;
+        delete this._click;
     };
 
     MultiSuite.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var _this5 = this;
+        var _this4 = this;
 
         var geos = [];
-        var notNeedSame = false;
         switch (this._task) {
             case 'combine':
                 geos = this.layer.identify(e.coordinate);
@@ -3565,7 +3570,7 @@ var MultiSuite = function (_maptalks$Class) {
             case 'peel':
                 var coordPeel = this._getSafeCoords();
                 this.layer.identify(e.coordinate).forEach(function (geo) {
-                    var coord = _this5._getSafeCoords(geo);
+                    var coord = _this4._getSafeCoords(geo);
                     if (!lodash_isequal(coord, coordPeel)) geos.push(geo);
                 });
                 break;
@@ -3575,7 +3580,7 @@ var MultiSuite = function (_maptalks$Class) {
             default:
                 break;
         }
-        this._updateHitGeo(geos, notNeedSame);
+        this._updateHitGeo(geos);
     };
 
     MultiSuite.prototype._getSafeCoords = function _getSafeCoords() {
@@ -3595,7 +3600,7 @@ var MultiSuite = function (_maptalks$Class) {
         return coords;
     };
 
-    MultiSuite.prototype._updateHitGeo = function _updateHitGeo(geos, notNeedSame) {
+    MultiSuite.prototype._updateHitGeo = function _updateHitGeo(geos) {
         var id = '_hit';
         if (this._needRefreshSymbol) {
             var hitGeoCopy = this._chooseLayer.getGeometryById(id);
@@ -3608,7 +3613,7 @@ var MultiSuite = function (_maptalks$Class) {
         if (geos && geos.length > 0) {
             this._needRefreshSymbol = true;
             this.hitGeo = geos[0];
-            if (this._checkIsSameType(this.hitGeo) || notNeedSame) {
+            if (this._checkIsSameType(this.hitGeo)) {
                 var hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit');
                 this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id);
             } else delete this.hitGeo;
@@ -3631,18 +3636,9 @@ var MultiSuite = function (_maptalks$Class) {
             }
             symbol.lineWidth = lineWidth;
         } else {
-            if (geo.getType().endsWith('Point')) symbol = {
-                markerFill: color,
-                markerType: 'path',
-                markerPath: [{
-                    path: 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
-                    fill: '#DE3333'
-                }],
-                markerPathWidth: 16,
-                markerPathHeight: 23,
-                markerWidth: 24,
-                markerHeight: 34
-            };else symbol = { lineColor: color, lineWidth: lineWidth };
+            if (geo.getType().endsWith('Point')) symbol = Object.assign(this._markerStyleDefault, {
+                markerFill: color
+            });else symbol = { lineColor: color, lineWidth: lineWidth };
         }
         return symbol;
     };
@@ -3680,10 +3676,10 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit) {
-        var _this6 = this;
+        var _this5 = this;
 
         var chooseNext = this._chooseGeos.reduce(function (target, geo) {
-            var coord = _this6._getSafeCoords(geo);
+            var coord = _this5._getSafeCoords(geo);
             if (lodash_isequal(coordHit, coord)) return target;
             return [].concat(target, [geo]);
         }, []);
@@ -3691,13 +3687,13 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._updateChooseGeos = function _updateChooseGeos() {
-        var _this7 = this;
+        var _this6 = this;
 
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            var chooseSymbol = _this7._getSymbolOrDefault(geo, 'Choose');
-            _this7._copyGeoUpdateSymbol(geo, chooseSymbol);
+            var chooseSymbol = _this6._getSymbolOrDefault(geo, 'Choose');
+            _this6._copyGeoUpdateSymbol(geo, chooseSymbol);
         });
     };
 
@@ -3721,7 +3717,7 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._compositWithTargets = function _compositWithTargets() {
-        var _this8 = this;
+        var _this7 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
@@ -3731,7 +3727,7 @@ var MultiSuite = function (_maptalks$Class) {
         var geosCoords = this._getGeoStringifyCoords(targets);
         var geometries = this.layer.getGeometries();
         var geos = geometries.reduce(function (target, geo) {
-            var coord = _this8._getGeoStringifyCoords(geo);
+            var coord = _this7._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) {
                 if (geo.getType().startsWith('Multi')) geo.forEach(function (item) {
                     return target.push(item.copy());
@@ -3744,10 +3740,10 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._getGeoStringifyCoords = function _getGeoStringifyCoords(geo) {
-        var _this9 = this;
+        var _this8 = this;
 
         if (geo instanceof Array) return geo.map(function (item) {
-            return JSON.stringify(_this9._getSafeCoords(item));
+            return JSON.stringify(_this8._getSafeCoords(item));
         });
         return JSON.stringify(this._getSafeCoords(geo));
     };
@@ -3779,21 +3775,21 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._decomposeWithTargets = function _decomposeWithTargets() {
-        var _this10 = this;
+        var _this9 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseLayer.getGeometries();
 
         var geosCoords = targets.reduce(function (target, geo) {
-            if (geo.getId() !== '_hit') target.push(_this10._getGeoStringifyCoords(geo));
+            if (geo.getId() !== '_hit') target.push(_this9._getGeoStringifyCoords(geo));
             return target;
         }, []);
 
         var geosTmp = this._tmpLayer.getGeometries();
         var geos = [];
         this._deals = geosTmp.reduce(function (target, geo) {
-            var coord = _this10._getGeoStringifyCoords(geo);
+            var coord = _this9._getGeoStringifyCoords(geo);
             if (geosCoords.includes(coord)) geos.push(geo.copy());else {
-                geo = geo.copy().addTo(_this10.layer);
+                geo = geo.copy().addTo(_this9.layer);
                 target.push(geo);
             }
             return target;
@@ -3803,7 +3799,7 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._peelWithTargets = function _peelWithTargets() {
-        var _this11 = this;
+        var _this10 = this;
 
         var targets = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : this._chooseGeos;
 
@@ -3812,9 +3808,9 @@ var MultiSuite = function (_maptalks$Class) {
             this._deals = [];
             var arr = targets.reduce(function (target, geo) {
                 if (geo instanceof maptalks.MultiPolygon) geo.forEach(function (item) {
-                    return target.push(_this11._getSafeCoords(item)[0]);
-                });else target.push(_this11._getSafeCoords(geo)[0]);
-                _this11._deals.push(geo.copy());
+                    return target.push(_this10._getSafeCoords(item)[0]);
+                });else target.push(_this10._getSafeCoords(geo)[0]);
+                _this10._deals.push(geo.copy());
                 geo.remove();
                 return target;
             }, [this._getSafeCoords(geometry)[0]]);
@@ -3881,4 +3877,4 @@ MultiSuite.mergeOptions(options);
 
 export { MultiSuite };
 
-typeof console !== 'undefined' && console.log('maptalks.multisuite v0.1.0');
+typeof console !== 'undefined' && console.log('maptalks.multisuite v0.1.0-beta.3');

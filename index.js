@@ -12,6 +12,20 @@ export class MultiSuite extends maptalks.Class {
         this._chooseGeos = []
         this._colorHit = '#ffa400'
         this._colorChoose = '#00bcd4'
+        this._markerStyleDefault = {
+            markerType: 'path',
+            markerPath: [
+                {
+                    path:
+                        'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
+                    fill: '#DE3333'
+                }
+            ],
+            markerPathWidth: 16,
+            markerPathHeight: 23,
+            markerWidth: 24,
+            markerHeight: 34
+        }
     }
 
     combine(geometry, targets) {
@@ -94,10 +108,12 @@ export class MultiSuite extends maptalks.Class {
         }
         callback(this._result, this._deals, this._task)
         this.remove()
+        return this
     }
 
     cancel() {
         this.remove()
+        return this
     }
 
     remove() {
@@ -111,13 +127,11 @@ export class MultiSuite extends maptalks.Class {
         delete this._task
         delete this._tmpLayer
         delete this._chooseLayer
-        delete this._mousemove
-        delete this._click
-        delete this._dblclick
+        return this
     }
 
     _initialTaskWithGeo(geometry, task) {
-        this._insureSafeTask()
+        if (this.geometry) this.remove()
         this._task = task
         this._savePrivateGeometry(geometry)
     }
@@ -137,10 +151,6 @@ export class MultiSuite extends maptalks.Class {
         this._updateChooseGeos()
     }
 
-    _insureSafeTask() {
-        if (this.geometry) this.remove()
-    }
-
     _savePrivateGeometry(geometry) {
         this.geometry = geometry
         this.layer = geometry.getLayer()
@@ -152,21 +162,20 @@ export class MultiSuite extends maptalks.Class {
         if (map._map_tool && map._map_tool instanceof maptalks.DrawTool)
             map._map_tool.disable()
         this._map = map
-        this._tmpLayer = new maptalks.VectorLayer(this._layerTMP)
-            .addTo(map)
-            .bringToFront()
-        this._chooseLayer = new maptalks.VectorLayer(this._layerName)
-            .addTo(map)
-            .bringToFront()
+        this._tmpLayer = this._newVectorLayerToFront(this._layerTMP)
+        this._chooseLayer = this._newVectorLayerToFront(this._layerName)
         this._registerMapEvents()
-        return this
+    }
+
+    _newVectorLayerToFront(name) {
+        return new maptalks.VectorLayer(name).addTo(this._map).bringToFront()
     }
 
     _registerMapEvents() {
         if (!this._mousemove) {
             const map = this._map
-            this._mousemove = (e) => this._mousemoveEvents(e)
-            this._click = (e) => this._clickEvents(e)
+            this._mousemove = this._mousemoveEvents.bind(this)
+            this._click = this._clickEvents.bind(this)
             map.on('mousemove', this._mousemove, this)
             map.on('click', this._click, this)
         }
@@ -178,11 +187,12 @@ export class MultiSuite extends maptalks.Class {
             map.off('mousemove', this._mousemove, this)
             map.off('click', this._click, this)
         }
+        delete this._mousemove
+        delete this._click
     }
 
     _mousemoveEvents(e) {
         let geos = []
-        let notNeedSame = false
         switch (this._task) {
             case 'combine':
                 geos = this.layer.identify(e.coordinate)
@@ -203,7 +213,7 @@ export class MultiSuite extends maptalks.Class {
             default:
                 break
         }
-        this._updateHitGeo(geos, notNeedSame)
+        this._updateHitGeo(geos)
     }
 
     _getSafeCoords(geo = this.geometry) {
@@ -220,7 +230,7 @@ export class MultiSuite extends maptalks.Class {
         return coords
     }
 
-    _updateHitGeo(geos, notNeedSame) {
+    _updateHitGeo(geos) {
         const id = '_hit'
         if (this._needRefreshSymbol) {
             const hitGeoCopy = this._chooseLayer.getGeometryById(id)
@@ -233,7 +243,7 @@ export class MultiSuite extends maptalks.Class {
         if (geos && geos.length > 0) {
             this._needRefreshSymbol = true
             this.hitGeo = geos[0]
-            if (this._checkIsSameType(this.hitGeo) || notNeedSame) {
+            if (this._checkIsSameType(this.hitGeo)) {
                 const hitSymbol = this._getSymbolOrDefault(this.hitGeo, 'Hit')
                 this._copyGeoUpdateSymbol(this.hitGeo, hitSymbol).setId(id)
             } else delete this.hitGeo
@@ -258,21 +268,9 @@ export class MultiSuite extends maptalks.Class {
             symbol.lineWidth = lineWidth
         } else {
             if (geo.getType().endsWith('Point'))
-                symbol = {
-                    markerFill: color,
-                    markerType: 'path',
-                    markerPath: [
-                        {
-                            path:
-                                'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
-                            fill: '#DE3333'
-                        }
-                    ],
-                    markerPathWidth: 16,
-                    markerPathHeight: 23,
-                    markerWidth: 24,
-                    markerHeight: 34
-                }
+                symbol = Object.assign(this._markerStyleDefault, {
+                    markerFill: color
+                })
             else symbol = { lineColor: color, lineWidth }
         }
         return symbol
