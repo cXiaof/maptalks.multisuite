@@ -1,6 +1,6 @@
 {
   "name": "maptalks.multisuite",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0",
   "description": "An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.",
   "license": "MIT",
   "author": "cXiaof",
@@ -9,7 +9,14 @@
     "url": "https://github.com/cXiaof/maptalks.multisuite.git"
   },
   "main": "dist/maptalks.multisuite.min.js",
-  "keywords": ["maptalks", "multisuite", "combine", "decompose", "peel", "fill"],
+  "keywords": [
+    "maptalks",
+    "multisuite",
+    "combine",
+    "decompose",
+    "peel",
+    "fill"
+  ],
   "bugs": {
     "url": "https://github.com/cXiaof/maptalks.multisuite/issues"
   },
@@ -18,19 +25,18 @@
     "prepublish": "gulp minify",
     "b": "gulp minify",
     "watch": "gulp watch",
-    "w": "gulp watch",
-    "i": "jsinspect ./index.js",
-    "it": "jsinspect -t 20 ./index.js"
-  },
-  "devDependencies": {
-    "babel-eslint": "^8.2.6",
-    "babel-preset-env": "^1.7.0",
-    "gulp": "^3.9.1",
-    "jsinspect": "^0.12.7",
-    "maptalks": "^0.40.5",
-    "maptalks-build-helpers": "^0.5.0"
+    "w": "gulp watch"
   },
   "dependencies": {
-    "lodash": "^4.17.10"
+    "lodash.flattendeep": "^4.4.0",
+    "lodash.isequal": "^4.5.0",
+    "lodash.unionwith": "^4.6.0"
+  },
+  "devDependencies": {
+    "babel-eslint": "^10.0.1",
+    "babel-preset-env": "^1.7.0",
+    "gulp": "^4.0.1",
+    "maptalks": "^0.44.0",
+    "maptalks-build-helpers": "^0.4.5"
   }
 }

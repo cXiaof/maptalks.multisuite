@@ -3,12 +3,6 @@
  * LICENSE : MIT
  * (c) 2016-2019 maptalks.org
  */
-(function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-	typeof define === 'function' && define.amd ? define(['exports'], factory) :
-	(factory((global.maptalks = global.maptalks || {})));
-}(this, (function (exports) { 'use strict';
-
 var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 
@@ -3885,10 +3879,6 @@ var MultiSuite = function (_maptalks$Class) {
 
 MultiSuite.mergeOptions(options);
 
-exports.MultiSuite = MultiSuite;
-
-Object.defineProperty(exports, '__esModule', { value: true });
+export { MultiSuite };
 
 typeof console !== 'undefined' && console.log('maptalks.multisuite v0.1.0');
-
-})));
