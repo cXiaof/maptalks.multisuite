@@ -12,13 +12,13 @@ const markerStyleDefault = {
         {
             path:
                 'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
-            fill: '#DE3333'
-        }
+            fill: '#DE3333',
+        },
     ],
     markerPathWidth: 16,
     markerPathHeight: 23,
     markerWidth: 24,
-    markerHeight: 34
+    markerHeight: 34,
 }
 
 export class MultiSuite extends maptalks.Class {
@@ -33,10 +33,10 @@ export class MultiSuite extends maptalks.Class {
         if (geometry instanceof maptalks.Geometry) {
             this._initialTaskWithGeo(geometry, 'combine')
             if (targets instanceof maptalks.Geometry) targets = [targets]
-            if (targets instanceof Array && targets.length > 0)
+            if (targets instanceof Array && targets.length > 0) {
                 this._compositWithTargets(targets)
-            else this._initialChooseGeos(geometry)
-            return this
+                this.remove()
+            } else this._initialChooseGeos(geometry)
         }
     }
 
@@ -44,10 +44,10 @@ export class MultiSuite extends maptalks.Class {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialTaskWithGeo(geometry, 'decompose')
             if (targets instanceof maptalks.Geometry) targets = [targets]
-            if (targets instanceof Array && targets.length > 0)
+            if (targets instanceof Array && targets.length > 0) {
                 this._decomposeWithTargets(targets)
-            else this._initialChooseGeos(geometry)
-            return this
+                this.remove()
+            } else this._initialChooseGeos(geometry)
         }
     }
 
@@ -59,7 +59,6 @@ export class MultiSuite extends maptalks.Class {
                 this._peelWithTargets(targets)
                 this.remove()
             }
-            return this
         }
     }
 
@@ -81,12 +80,11 @@ export class MultiSuite extends maptalks.Class {
                     coords0.forEach((coord, index) => {
                         if (index > 0)
                             new maptalks.Polygon([coords0[index]], {
-                                symbol
+                                symbol,
                             }).addTo(this._tmpLayer)
                     })
                 }
             }
-            return this
         }
     }
 
@@ -109,16 +107,13 @@ export class MultiSuite extends maptalks.Class {
         }
         callback(this._result, this._deals, this._task)
         this.remove()
-        return this
     }
 
     cancel() {
         this.remove()
-        return this
     }
 
     remove() {
-        const map = this._map
         if (this._tmpLayer) this._tmpLayer.remove()
         if (this._chooseLayer) this._chooseLayer.remove()
         this._chooseGeos = []
@@ -128,28 +123,12 @@ export class MultiSuite extends maptalks.Class {
         delete this._task
         delete this._tmpLayer
         delete this._chooseLayer
-        return this
     }
 
     _initialTaskWithGeo(geometry, task) {
         if (this.geometry) this.remove()
         this._task = task
         this._savePrivateGeometry(geometry)
-    }
-
-    _initialChooseGeos(geometry) {
-        switch (this._task) {
-            case 'combine':
-                this._chooseGeos = [geometry]
-                break
-            case 'decompose':
-                geometry.forEach((geo) => geo.copy().addTo(this._tmpLayer))
-                this._chooseGeos = this._tmpLayer.getGeometries()
-                break
-            default:
-                break
-        }
-        this._updateChooseGeos()
     }
 
     _savePrivateGeometry(geometry) {
@@ -173,23 +152,13 @@ export class MultiSuite extends maptalks.Class {
     }
 
     _registerMapEvents() {
-        if (!this._mousemove) {
-            const map = this._map
-            this._mousemove = this._mousemoveEvents.bind(this)
-            this._click = this._clickEvents.bind(this)
-            map.on('mousemove', this._mousemove, this)
-            map.on('click', this._click, this)
-        }
+        map.on('mousemove', this._mousemoveEvents, this)
+        map.on('click', this._clickEvents, this)
     }
 
     _offMapEvents() {
-        if (this._mousemove) {
-            const map = this._map
-            map.off('mousemove', this._mousemove, this)
-            map.off('click', this._click, this)
-        }
-        delete this._mousemove
-        delete this._click
+        map.off('mousemove', this._mousemoveEvents, this)
+        map.off('click', this._clickEvents, this)
     }
 
     _mousemoveEvents(e) {
@@ -270,7 +239,7 @@ export class MultiSuite extends maptalks.Class {
         } else {
             if (geo.getType().endsWith('Point'))
                 symbol = Object.assign(markerStyleDefault, {
-                    markerFill: color
+                    markerFill: color,
                 })
             else symbol = { lineColor: color, lineWidth }
         }
@@ -341,6 +310,21 @@ export class MultiSuite extends maptalks.Class {
             this._setChooseGeosExceptHit(coordHit, true)
             geo.remove()
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo)
+        this._updateChooseGeos()
+    }
+
+    _initialChooseGeos(geometry) {
+        switch (this._task) {
+            case 'combine':
+                this._chooseGeos = [geometry]
+                break
+            case 'decompose':
+                geometry.forEach((geo) => geo.copy().addTo(this._tmpLayer))
+                this._chooseGeos = this._tmpLayer.getGeometries()
+                break
+            default:
+                break
+        }
         this._updateChooseGeos()
     }
 
@@ -439,7 +423,7 @@ export class MultiSuite extends maptalks.Class {
             )
             this._result = new maptalks.MultiPolygon([arr], {
                 symbol: geometry.getSymbol(),
-                properties: geometry.getProperties()
+                properties: geometry.getProperties(),
             }).addTo(this.layer)
         } else this._result = geometry.copy().addTo(this.layer)
         geometry.remove()
@@ -459,7 +443,7 @@ export class MultiSuite extends maptalks.Class {
         const properties = this.geometry.getProperties()
         const result = new maptalks.Polygon([coords[0][0]], {
             symbol,
-            properties
+            properties,
         }).addTo(this.layer)
         this.geometry.remove()
         return result
@@ -486,7 +470,7 @@ export class MultiSuite extends maptalks.Class {
         else {
             this._result = new maptalks.MultiPolygon([coords], {
                 symbol,
-                properties
+                properties,
             }).addTo(this.layer)
             this.geometry.remove()
         }
