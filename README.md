@@ -42,14 +42,21 @@ new maptalks.MultiSuite()
 ```
 
 -   options
-    -   none
+    -   colorHit **String** the color of symbol when geo hit
+    -   colorChosen **String** the color of symbol when geo chosen
 
 `combine(geometry, targets)` if no targets, start choose mode on map
+
 `decompose(geometry, targets)` same as above
+
 `peel(geometry, targets)` same as above
+
 `fill(geometry, targets, fillAll)` same as above. And if fillAll, the result is An Polygon, else is always MultiPolygon
+
 `submit(callback)` callback can get three attr, the result, deals(targets or choose-targets) and task name.
+
 `cancel()`
+
 `remove()`
 
 ## Contributing

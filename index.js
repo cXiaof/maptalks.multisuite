@@ -1,31 +1,32 @@
 import isEqual from 'lodash.isequal'
-import unionWith from 'lodash.unionwith'
-import flattenDeep from 'lodash.flattendeep'
 
-const options = {}
+const uid = 'multisuite@cXiaof'
+const options = {
+    colorHit: '#ffa400',
+    colorChosen: '#00bcd4',
+}
+
+const markerStyleDefault = {
+    markerType: 'path',
+    markerPath: [
+        {
+            path:
+                'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
+            fill: '#DE3333'
+        }
+    ],
+    markerPathWidth: 16,
+    markerPathHeight: 23,
+    markerWidth: 24,
+    markerHeight: 34
+}
 
 export class MultiSuite extends maptalks.Class {
     constructor(options) {
         super(options)
-        this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP`
-        this._layerTMP = `${maptalks.INTERNAL_LAYER_PREFIX}_CDSP_TMP`
+        this._layerName = `${maptalks.INTERNAL_LAYER_PREFIX}${uid}`
+        this._layerTMP = `${maptalks.INTERNAL_LAYER_PREFIX}${uid}_temp`
         this._chooseGeos = []
-        this._colorHit = '#ffa400'
-        this._colorChoose = '#00bcd4'
-        this._markerStyleDefault = {
-            markerType: 'path',
-            markerPath: [
-                {
-                    path:
-                        'M8 23l0 0 0 0 0 0 0 0 0 0c-4,-5 -8,-10 -8,-14 0,-5 4,-9 8,-9l0 0 0 0c4,0 8,4 8,9 0,4 -4,9 -8,14z M3,9 a5,5 0,1,0,0,-0.9Z',
-                    fill: '#DE3333'
-                }
-            ],
-            markerPathWidth: 16,
-            markerPathHeight: 23,
-            markerWidth: 24,
-            markerHeight: 34
-        }
     }
 
     combine(geometry, targets) {
@@ -258,7 +259,7 @@ export class MultiSuite extends maptalks.Class {
 
     _getSymbolOrDefault(geo, type) {
         let symbol = geo.getSymbol()
-        const color = this[`_color${type}`]
+        const color = this.options[`color${type}`]
         const lineWidth = 4
         if (symbol) {
             for (let key in symbol) {
@@ -268,7 +269,7 @@ export class MultiSuite extends maptalks.Class {
             symbol.lineWidth = lineWidth
         } else {
             if (geo.getType().endsWith('Point'))
-                symbol = Object.assign(this._markerStyleDefault, {
+                symbol = Object.assign(markerStyleDefault, {
                     markerFill: color
                 })
             else symbol = { lineColor: color, lineWidth }
@@ -277,10 +278,7 @@ export class MultiSuite extends maptalks.Class {
     }
 
     _copyGeoUpdateSymbol(geo, symbol) {
-        return geo
-            .copy()
-            .updateSymbol(symbol)
-            .addTo(this._chooseLayer)
+        return geo.copy().updateSymbol(symbol).addTo(this._chooseLayer)
     }
 
     _clickEvents(e) {
@@ -326,7 +324,7 @@ export class MultiSuite extends maptalks.Class {
         const layer = this._chooseLayer
         layer.clear()
         this._chooseGeos.forEach((geo) => {
-            const chooseSymbol = this._getSymbolOrDefault(geo, 'Choose')
+            const chooseSymbol = this._getSymbolOrDefault(geo, 'Chosen')
             this._copyGeoUpdateSymbol(geo, chooseSymbol)
         })
     }

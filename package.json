@@ -1,6 +1,6 @@
 {
   "name": "maptalks.multisuite",
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0",
   "description": "An Suite to Combine <-> Decompose, Peel <-> Fill MultiPolygon.",
   "license": "MIT",
   "author": "cXiaof",
@@ -27,16 +27,18 @@
     "watch": "gulp watch",
     "w": "gulp watch"
   },
+  "peerDependencies": {
+    "maptalks": ">=0.31.0"
+  },
   "dependencies": {
-    "lodash.flattendeep": "^4.4.0",
-    "lodash.isequal": "^4.5.0",
-    "lodash.unionwith": "^4.6.0"
+    "lodash.isequal": "^4.5.0"
   },
   "devDependencies": {
-    "babel-eslint": "^10.0.1",
+    "babel-eslint": "^10.1.0",
     "babel-preset-env": "^1.7.0",
-    "gulp": "^4.0.1",
-    "maptalks": "^0.44.0",
-    "maptalks-build-helpers": "^0.4.5"
+    "gulp": "^4.0.2",
+    "maptalks": "^0.49.1",
+    "maptalks-build-helpers": "^0.4.5",
+    "prettier": "^2.2.1"
   }
 }
