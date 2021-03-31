@@ -86,7 +86,7 @@ const toolbar = new maptalks.control.Toolbar({
             item: 'Clear',
             click: () => {
                 layer.clear()
-                pb.cancel()
+                ms.cancel()
             },
         },
     ],
