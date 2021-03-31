@@ -1871,8 +1871,10 @@ var MultiSuite = function (_maptalks$Class) {
         if (geometry instanceof maptalks.Geometry) {
             this._initialTaskWithGeo(geometry, 'combine');
             if (targets instanceof maptalks.Geometry) targets = [targets];
-            if (targets instanceof Array && targets.length > 0) this._compositWithTargets(targets);else this._initialChooseGeos(geometry);
-            return this;
+            if (targets instanceof Array && targets.length > 0) {
+                this._compositWithTargets(targets);
+                this.remove();
+            } else this._initialChooseGeos(geometry);
         }
     };
 
@@ -1880,8 +1882,10 @@ var MultiSuite = function (_maptalks$Class) {
         if (geometry instanceof maptalks.GeometryCollection) {
             this._initialTaskWithGeo(geometry, 'decompose');
             if (targets instanceof maptalks.Geometry) targets = [targets];
-            if (targets instanceof Array && targets.length > 0) this._decomposeWithTargets(targets);else this._initialChooseGeos(geometry);
-            return this;
+            if (targets instanceof Array && targets.length > 0) {
+                this._decomposeWithTargets(targets);
+                this.remove();
+            } else this._initialChooseGeos(geometry);
         }
     };
 
@@ -1893,7 +1897,6 @@ var MultiSuite = function (_maptalks$Class) {
                 this._peelWithTargets(targets);
                 this.remove();
             }
-            return this;
         }
     };
 
@@ -1921,7 +1924,6 @@ var MultiSuite = function (_maptalks$Class) {
                     });
                 }
             }
-            return this;
         }
     };
 
@@ -1948,16 +1950,13 @@ var MultiSuite = function (_maptalks$Class) {
         }
         callback(this._result, this._deals, this._task);
         this.remove();
-        return this;
     };
 
     MultiSuite.prototype.cancel = function cancel() {
         this.remove();
-        return this;
     };
 
     MultiSuite.prototype.remove = function remove() {
-        var map = this._map;
         if (this._tmpLayer) this._tmpLayer.remove();
         if (this._chooseLayer) this._chooseLayer.remove();
         this._chooseGeos = [];
@@ -1967,32 +1966,12 @@ var MultiSuite = function (_maptalks$Class) {
         delete this._task;
         delete this._tmpLayer;
         delete this._chooseLayer;
-        return this;
     };
 
     MultiSuite.prototype._initialTaskWithGeo = function _initialTaskWithGeo(geometry, task) {
         if (this.geometry) this.remove();
         this._task = task;
         this._savePrivateGeometry(geometry);
-    };
-
-    MultiSuite.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
-        var _this3 = this;
-
-        switch (this._task) {
-            case 'combine':
-                this._chooseGeos = [geometry];
-                break;
-            case 'decompose':
-                geometry.forEach(function (geo) {
-                    return geo.copy().addTo(_this3._tmpLayer);
-                });
-                this._chooseGeos = this._tmpLayer.getGeometries();
-                break;
-            default:
-                break;
-        }
-        this._updateChooseGeos();
     };
 
     MultiSuite.prototype._savePrivateGeometry = function _savePrivateGeometry(geometry) {
@@ -2015,27 +1994,17 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._registerMapEvents = function _registerMapEvents() {
-        if (!this._mousemove) {
-            var map = this._map;
-            this._mousemove = this._mousemoveEvents.bind(this);
-            this._click = this._clickEvents.bind(this);
-            map.on('mousemove', this._mousemove, this);
-            map.on('click', this._click, this);
-        }
+        map.on('mousemove', this._mousemoveEvents, this);
+        map.on('click', this._clickEvents, this);
     };
 
     MultiSuite.prototype._offMapEvents = function _offMapEvents() {
-        if (this._mousemove) {
-            var map = this._map;
-            map.off('mousemove', this._mousemove, this);
-            map.off('click', this._click, this);
-        }
-        delete this._mousemove;
-        delete this._click;
+        map.off('mousemove', this._mousemoveEvents, this);
+        map.off('click', this._clickEvents, this);
     };
 
     MultiSuite.prototype._mousemoveEvents = function _mousemoveEvents(e) {
-        var _this4 = this;
+        var _this3 = this;
 
         var geos = [];
         switch (this._task) {
@@ -2048,7 +2017,7 @@ var MultiSuite = function (_maptalks$Class) {
             case 'peel':
                 var coordPeel = this._getSafeCoords();
                 this.layer.identify(e.coordinate).forEach(function (geo) {
-                    var coord = _this4._getSafeCoords(geo);
+                    var coord = _this3._getSafeCoords(geo);
                     if (!lodash_isequal(coord, coordPeel)) geos.push(geo);
                 });
                 break;
@@ -2154,10 +2123,10 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._setChooseGeosExceptHit = function _setChooseGeosExceptHit(coordHit) {
-        var _this5 = this;
+        var _this4 = this;
 
         var chooseNext = this._chooseGeos.reduce(function (target, geo) {
-            var coord = _this5._getSafeCoords(geo);
+            var coord = _this4._getSafeCoords(geo);
             if (lodash_isequal(coordHit, coord)) return target;
             return [].concat(target, [geo]);
         }, []);
@@ -2165,13 +2134,13 @@ var MultiSuite = function (_maptalks$Class) {
     };
 
     MultiSuite.prototype._updateChooseGeos = function _updateChooseGeos() {
-        var _this6 = this;
+        var _this5 = this;
 
         var layer = this._chooseLayer;
         layer.clear();
         this._chooseGeos.forEach(function (geo) {
-            var chooseSymbol = _this6._getSymbolOrDefault(geo, 'Chosen');
-            _this6._copyGeoUpdateSymbol(geo, chooseSymbol);
+            var chooseSymbol = _this5._getSymbolOrDefault(geo, 'Chosen');
+            _this5._copyGeoUpdateSymbol(geo, chooseSymbol);
         });
     };
 
@@ -2187,6 +2156,25 @@ var MultiSuite = function (_maptalks$Class) {
             this._setChooseGeosExceptHit(coordHit, true);
             geo.remove();
         } else if (this.hitGeo) this._chooseGeos.push(this.hitGeo);
+        this._updateChooseGeos();
+    };
+
+    MultiSuite.prototype._initialChooseGeos = function _initialChooseGeos(geometry) {
+        var _this6 = this;
+
+        switch (this._task) {
+            case 'combine':
+                this._chooseGeos = [geometry];
+                break;
+            case 'decompose':
+                geometry.forEach(function (geo) {
+                    return geo.copy().addTo(_this6._tmpLayer);
+                });
+                this._chooseGeos = this._tmpLayer.getGeometries();
+                break;
+            default:
+                break;
+        }
         this._updateChooseGeos();
     };
 
